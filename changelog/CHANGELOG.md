@@ -20,9 +20,9 @@
 
 ---
 
-## [Unreleased] - 2026-04-28
+## [1.7.3] - 2026-04-28
 
-### 개선 (task-118 / task-119)
+### 보안 (task-118 / task-119)
 - `gdi_client.log_gdi_query`: log injection 차단 — ASCII `|`(U+007C) → 전각 `｜`(U+FF5C) 치환 (`_sanitize_log_field` 헬퍼)
   - 적용 필드: `query`, `result`, `error`, `user_name`, `user_id` (task-118), `action` (task-119, defense-in-depth)
   - sec-code OWASP A09 closeout PASS, 단위 11/11 PASS
@@ -34,6 +34,16 @@
   - 백업: `logs/gdi_query.log.bak-task114-cleanup-20260428` (rollback 보장)
   - 절차: AI Brain `_workspace/tasks/task-118/cleanup_report.md` 참조
 - KPI post_run_gate exit=0, routing_hit_rate=1.000 유지
+
+### 운영 (pm2 ecosystem 정합)
+- `ecosystem.config.cjs`: `python.exe` → `pythonw.exe` + `windowsHide: true` 적용 (콘솔 창 hide)
+- pm2 ecosystem 통합 정리: 5 앱 → 8 앱 online (issue-dashboard 5174 / issue-dashboard-api 9100 / kis-server 9091 신규 등록)
+- 운영 정정: Railway 사용 안 함 (Master 명시 2026-04-28) — 로컬 pm2 단일 인스턴스만 운영
+- 좀비 프로세스 정리: 5174 vite chain / 9100 server.py chain / 9091 s3_server / slack_bot launcher 잔존 9 PIDs 종료
+
+### 진단 보고 (Master 검수 위임)
+- task-121 — Epicseven Update Review depth=7 비정상 8건 GDI MCP 진단 (S3 직접 비교 권한 필요)
+- task-118 carryover — s3_server.py:774 spec mismatch (`_dash_queries` query/result 미렌더링, 코드 변경 0)
 
 ---
 

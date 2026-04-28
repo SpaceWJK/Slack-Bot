@@ -33,8 +33,22 @@
 ### Master 검수 carryover (Claude 권한 부재)
 - C-2 spec mismatch (s3_server.py:774): spec 폐기 vs 신규 요구사항 결정
 - C-3 Epicseven depth=7 8건: GDI MCP 또는 AWS 권한으로 S3 직접 비교 필요
-- Railway CLI 깨짐(`Cannot find module @railway/cli`): Master dashboard 확인 필요
+- ~~Railway CLI 깨짐~~: 폐기 (Master 정정 2026-04-28 — Railway 사용 안 함)
 - mcp-cache-layer 미push 3건 (세션 33 작업): 별건 처리
+
+### 운영 정합 (pm2 ecosystem)
+- 8 앱 pm2 정상 가동 + windowsHide:true (CMD 창 0)
+- 신규 등록: issue-dashboard(5174) / issue-dashboard-api(9100) / kis-server(9091)
+- ecosystem.config.cjs commit: Slack Bot 1d548cc / work-automation 289dac4 / AI Brain 0e2b896
+
+### task-115 안건 C 폐기 (non-issue)
+- mcp_server 4 인스턴스 진단 결과 좀비 아님 — Claude Desktop이 prompt-cultivation MCP session별로 spawn하는 정상 패턴
+- process-cleanup.js MCP_BLACKLIST에 mcp_server 이미 보호 등록 → 추가 작업 불필요
+- reflect 295 (insight, env-windows): 1차 직관 (kill) 무효화 / parent alive + MCP_BLACKLIST 보호 = 정상
+
+### CHANGELOG v1.7.3 (2026-04-28)
+- 보안 + 데이터 보정 + 운영 + 진단 4 카테고리 정리
+- Patch 버전 (기능 추가 없음, 버그 수정 + 보안 + 운영 정합)
 
 ---
 
