@@ -20,6 +20,23 @@
 
 ---
 
+## [Unreleased] - 2026-04-28
+
+### 개선 (task-118 / task-119)
+- `gdi_client.log_gdi_query`: log injection 차단 — ASCII `|`(U+007C) → 전각 `｜`(U+FF5C) 치환 (`_sanitize_log_field` 헬퍼)
+  - 적용 필드: `query`, `result`, `error`, `user_name`, `user_id` (task-118), `action` (task-119, defense-in-depth)
+  - sec-code OWASP A09 closeout PASS, 단위 11/11 PASS
+- 분리자 ` | ` 보존 → failure_analyzer baseline 회귀 0 (backfill 19179건 무영향)
+
+### 데이터 보정 (task-114 follow-up)
+- `logs/gdi_query.log` pre-fix legacy data cleanup — task-114 commit 6569362 (escape patch) 이전 발생한 7쌍 (14 lines) → 7 정상 entries로 reconstruct
+  - 결과: failure_analyzer parse warnings 14 → 0, parsed entries 51 → 58 (+7)
+  - 백업: `logs/gdi_query.log.bak-task114-cleanup-20260428` (rollback 보장)
+  - 절차: AI Brain `_workspace/tasks/task-118/cleanup_report.md` 참조
+- KPI post_run_gate exit=0, routing_hit_rate=1.000 유지
+
+---
+
 ## [1.7.2] - 2026-04-24
 
 ### 개선

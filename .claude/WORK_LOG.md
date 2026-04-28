@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-04-28 (화) — 세션 34 (task-118/119 종결 + task-114 carryover cleanup)
+
+### task-118 종결 (gdi_client log injection sanitize, OWASP A09 closeout)
+- 변경: `Slack Bot/gdi_client.py`에 `_sanitize_log_field` 헬퍼 신설 + `log_gdi_query` 5개 필드(query/result/error/user_name/user_id) ASCII `|` → 전각 ｜ 치환
+- 검증: 단위 10/10 PASS, failure_analyzer 회귀 0 (51→53), KPI exit=0 routing_hit_rate=1.000
+- sec-code: CONDITIONAL_PASS → user_name 확장(Slack display_name attacker-controlled) → PASS
+- advisor /plan 1회 + /advise 2회 (Phase C 자율성 매트릭스 정합)
+- commit: Slack Bot 0c814c6, AI Brain 81df62e (push 완료)
+- 봇 재시작: PID 15196, Bolt running 10:15:43
+
+### task-119 종결 (action 필드 defense-in-depth, task-118 follow-up)
+- 변경: `log_gdi_query`의 `action` 인자도 `_sanitize_log_field` 적용 (현재 호출처 모두 하드코딩이라 즉시 위험 0이지만 향후 user input 흐름 추가 시 즉시 vector화 차단)
+- agent-workflow 5단계 단축 (Step 0.5/2/4 skip)
+- 검증: 단위 11/11 PASS, KPI exit=0 routing_hit_rate=1.000
+- commit: Slack Bot ae9c944, AI Brain 7927d94 (push 완료)
+- 봇 재시작: Bolt running 10:46:00
+
+### task-114 carryover — pre-fix legacy line cleanup
+- 발견: `logs/gdi_query.log` line 42-57 비표준 14 lines (n=6 + 인접 n=3 7쌍) 모두 task-114 commit 6569362 escape patch 이전 발생한 1회성 잔존 데이터
+- task-120 폐기 → task-114 carryover로 재정의 (advisor reconcile 결과)
+- 절차: Consumer grep(영향 0) → `.bak` 백업 → dry-run preview → apply → verify
+- 결과: 65→58 lines (merged 7), failure_analyzer warnings **14→0**, parsed entries **51→58 (+7)**
+- KPI post_run_gate exit=0 routing_hit_rate=1.000 유지
+- 산출: AI Brain `_workspace/tasks/task-118/cleanup_gdi_log_legacy.py` + `cleanup_report.md`
+
+### Master 검수 carryover (Claude 권한 부재)
+- C-2 spec mismatch (s3_server.py:774): spec 폐기 vs 신규 요구사항 결정
+- C-3 Epicseven depth=7 8건: GDI MCP 또는 AWS 권한으로 S3 직접 비교 필요
+- Railway CLI 깨짐(`Cannot find module @railway/cli`): Master dashboard 확인 필요
+- mcp-cache-layer 미push 3건 (세션 33 작업): 별건 처리
+
+---
+
 ## 2026-04-25 (토) — 세션 30 연장 2 (task-113 설계 3라운드 + advisor 3회)
 
 ### task-113 Step 3 완료 (design-approved v3)
