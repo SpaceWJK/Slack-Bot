@@ -316,8 +316,10 @@ def log_gdi_query(*, user_id: str = "", user_name: str = "",
     s_query  = _sanitize_log_field(query)
     s_result = _sanitize_log_field(result)
     s_error  = _sanitize_log_field(error)
+    # action: 현재 모두 하드코딩이지만 defense-in-depth (task-119)
+    s_action = _sanitize_log_field(action)
 
-    msg = f"{status} | {action} | user={user} | query={s_query}"
+    msg = f"{status} | {s_action} | user={user} | query={s_query}"
     if s_result:
         msg += f" | result={s_result}"
     if s_error:
