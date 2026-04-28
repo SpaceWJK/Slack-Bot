@@ -46,3 +46,27 @@ tools/*_backup_*.html
 tools/*_taste_test.html
 tools/*_prev.zip
 tools/S3-Uploader_prev.zip
+
+# tools/mcp-cache-layer/ 백업 — 코드는 추적, 데이터/runtime 제외 (Master 명시 2026-04-28)
+# 광역 ignore (data/, scripts/) 예외로 코드 추적
+!tools/mcp-cache-layer/scripts/
+!tools/mcp-cache-layer/scripts/**/*.py
+!tools/mcp-cache-layer/data/
+!tools/mcp-cache-layer/data/**
+# data/runtime 명시 차단
+tools/mcp-cache-layer/cache/
+tools/mcp-cache-layer/logs/
+tools/mcp-cache-layer/reports/
+tools/mcp-cache-layer/gdi-repo/
+tools/mcp-cache-layer/tmp/
+tools/mcp-cache-layer/venv/
+tools/mcp-cache-layer/.pytest_cache/
+tools/mcp-cache-layer/scripts/audit_results/
+tools/mcp-cache-layer/scripts/__pycache__/
+tools/mcp-cache-layer/src/__pycache__/
+tools/mcp-cache-layer/tests/__pycache__/
+tools/mcp-cache-layer/**/*.db
+tools/mcp-cache-layer/**/*.db-shm
+tools/mcp-cache-layer/**/*.db-wal
+tools/mcp-cache-layer/**/*.bak*
+tools/mcp-cache-layer/**/*.pyc

@@ -1,0 +1,199 @@
+# routing_spec.yaml v0
+# slack_bot.py 2026-04-25 기준 production seam 명세.
+# source_sha: 32d0cf0e78ae53bf (SHA256 앞 16자)
+# extracted_at: 2026-04-25
+# extracted_by: pm-analyst (Round 0 검수)
+# drift_detection: spec.source_sha vs actual slack_bot.py SHA256 비교 (T-21)
+
+spec:
+  version: "v0"
+  source_sha: "32d0cf0e78ae53bf"
+  extracted_at: "2026-04-25"
+  notes: >
+    4 seam 모두 pm-analyst Round 0 실증 완료.
+    folder_ai downstream = gdi_client.list_files_in_folder (primary)
+    + gc.get_file_content_full / gdi_client.search_by_filename / gdi_client.unified_search (fallback chain)
+
+seams:
+  ask_claude_2part:
+    file: "Slack Bot/Slack Bot/slack_bot.py"
+    line: 2041
+    trigger: "pipe_parts 길이 == 2, 첫 파트에 breadcrumb('>')가 없는 경우"
+    entry_line: 2004
+    raw_input_pattern: "<search_query> \\ <question>"
+    transform:
+      - split: "\\"
+      - take_index: 0
+        comment: "pipe_parts[0] = search_query (키워드형, 자연어 question 아님)"
+      - strip: true
+    output: "search_query → gdi_client.unified_search(search_query)"
+    pre_checks:
+      - step: "taxonomy_search(search_query, question=question)"
+        line: 2012
+        fallthrough: "taxonomy files 없을 때 unified_search로 진행"
+      - step: "match_gdi_keyword_rule(search_query)"
+        line: 2034
+        fallthrough: "rule 없을 때 unified_search로 진행"
+    downstream:
+      method: "gdi_client.unified_search"
+      args: ["search_query"]
+      kwargs: {}
+      impl_path: "gdi_client.py:506-527"
+      local_mode_delegate: "GdiClient._local_unified_search"
+
+  ask_claude_3part_fallback:
+    file: "Slack Bot/Slack Bot/slack_bot.py"
+    line: 1954
+    trigger: "pipe_parts 길이 >= 3, 첫 파트 breadcrumb 없음, search_by_filename 결과 context 없을 때"
+    entry_line: 1931
+    raw_input_pattern: "<search_kw> \\ <file_name> \\ <question>"
+    transform:
+      # Round 5 qa-blackbox MAJOR: extract 값은 dict 형식 (routing_replay._apply_transform 입력 호환)
+      - split: "\\"
+      - extract:
+          search_kw: 0
+          file_name: 1
+      - format: "{search_kw} {file_name}"
+    output: "f'{search_kw} {file_name}' → gdi_client.unified_search(concatenated)"
+    condition: "gdi_client.search_by_filename(file_name) 결과 context 없을 때만 실행"
+    downstream:
+      method: "gdi_client.unified_search"
+      args: ["f'{search_kw} {file_name}'"]
+      kwargs: {}
+      impl_path: "gdi_client.py:506-527"
+      local_mode_delegate: "GdiClient._local_unified_search"
+
+  gdi_simple_search:
+    file: "Slack Bot/Slack Bot/slack_bot.py"
+    line: 1858
+    trigger: "/gdi search <query> 커맨드"
+    entry_line: 1854
+    raw_input_pattern: "<text>"
+    transform: []
+    output: "text 통째 → _gdi_search(client, query, respond) → gdi_client.unified_search(query)"
+    intermediary:
+      function: "_gdi_search"
+      defined_at: "slack_bot.py:772"
+      step1: "gc.taxonomy_search(query)"
+      step1_line: 775
+      step2_fallback: "gdi_client.unified_search(query)"
+      step2_line: 781
+    downstream:
+      method: "gdi_client.unified_search"
+      args: ["query"]
+      kwargs: {}
+      impl_path: "gdi_client.py:506-527"
+      local_mode_delegate: "GdiClient._local_unified_search"
+
+  folder_ai:
+    file: "Slack Bot/Slack Bot/slack_bot.py"
+    line: 1927
+    trigger: "pipe_parts 첫 파트에 breadcrumb('>')가 있는 경우 (_has_breadcrumb 판정)"
+    entry_line: 1912
+    raw_input_pattern: "<folder_path_with_breadcrumb> \\ [<file_keyword> \\] <question>"
+    transform:
+      # Round 5 qa-blackbox: routing_replay 입력은 folder_path 문자열 (gold_folder의 query 필드)
+      # gold_folder query는 generate_gold_set._extract_folder 가 _breadcrumb_to_path로 미리 변환된 folder_path 형식 'Chaoszero/Update Review/20260204'
+      # 따라서 transform 단계 미적용 (gold_folder query 자체가 이미 folder_path)
+      []
+    output: "folder_path → gdi_client.list_files_in_folder (실제 운영) / folder_path_search (v4.2 routing_replay 우회)"
+    # Round 5 qa-blackbox MAJOR 보완: downstream 키 명시 (routing_replay.replay 가 _folder_lookup 호출)
+    downstream:
+      method: "gdi_client.list_files_in_folder"
+      v42_replay_method: "ProductionSearchAdapter.folder_path_search"
+      reason: "GDI_MODE=local 캐시 미warm → routing_replay 는 nodes.path LIKE 직접 쿼리로 우회"
+    secondary_retry:
+      # web-backend Round 0 발견: 게임명 prefix 보정 2차 재호출
+      condition: "list_files_in_folder 1차 결과 0건 + folder_path 가 알려진 게임명 prefix 미포함"
+      defined_at: "slack_bot.py:580-592"
+      action: "Chaoszero/, Epicseven/ 등 게임명 prefix 추가 후 list_files_in_folder 재호출"
+      notes: "routing_replay stub 구현 시 이 retry 경로도 재현 필요"
+    downstream_chain:
+      # PRIMARY: 폴더 내 파일 목록 조회 — unified_search 미사용
+      step1:
+        method: "gdi_client.list_files_in_folder"
+        args: ["folder_path", "page_size=100"]
+        defined_at: "gdi_client.py:926"
+        notes: "local 모드에서는 캐시 미스 시 None 반환 (MCP 폴백 없음)"
+      # SECONDARY: 파일 내용 조회 — 5단계 폴백 체인
+      step2:
+        function: "_fetch_file_content(client, target_name)"
+        defined_at: "slack_bot.py:508"
+        fallback_chain:
+          - step: 0
+            method: "gc.get_file_content_full(file_name)"
+            line: 517
+          - step: 1
+            method: "gdi_client.search_by_filename(file_name, exact_match=True)"
+            line: 522
+          - step: 2
+            method: "gdi_client.search_by_filename(file_name, exact_match=False)"
+            line: 529
+          - step: 3
+            method: "gdi_client.search_by_filename(cleaned, exact_match=False)"
+            line: 538
+            condition: "#숫자 접두사 제거 후"
+          - step: 4
+            method: "gdi_client.unified_search(search_query)"
+            line: 546
+            notes: "최후 폴백. unified_search가 호출되나 primary path 아님"
+      step3:
+        condition: "want_content=True (단일 파일 또는 내용 질문)"
+        method: "_gdi_ask_claude_content(context, ...)"
+        line: 715
+      step4:
+        condition: "want_content=False (목록 질문, matched > 1)"
+        method: "_gdi_ask_claude_list(file_list_context, ...)"
+        line: 749
+    notes: >
+      folder_ai의 primary downstream은 gdi_client.list_files_in_folder이며
+      unified_search는 직접 호출하지 않음.
+      단, _fetch_file_content 내부 step-4 폴백으로 unified_search가 최후에 호출될 수 있음.
+      routing_replay.py 구현 시 folder_ai stub = list_files_in_folder 기반 path lookup.
+
+# ── task-115 v1 확장 (folder_routing) ─────────────────────────
+# spec.version v0 → v1 승격. seams: 블록 절대 무변경 (FROZEN, baseline_sha 보존).
+# baseline_sha (v0 routing_spec.yaml): ce90f72775a6b18b
+# v1 신규: folder_routing top-level key — task-115 §3.3 SSoT 코드화
+
+folder_routing:
+  version: "v1"
+  extracted_at: "2026-04-25"
+  baseline_sha_v0: "ce90f72775a6b18b"
+
+  # §6.1 폴더 의미 라우팅 (Master 정의 5종)
+  folder_role_map:
+    "Update Review": "planning"
+    "Test Result": "qa_result"
+    "Live Issue": "live_issue"
+    "TSV": "game_data"
+    "Dashboard": "dashboard"
+
+  # §6.1 사용자 의도 키워드 → folder_role
+  intent_keywords:
+    planning: ["기획", "기획서", "기획안", "명세", "패치노트", "빌드", "핫픽스"]
+    qa_result: ["QA", "테스트", "BAT", "Bug Verification", "Update Checklist"]
+    live_issue: ["라이브", "운영 이슈", "커뮤니티 버그", "CS 이슈", "인앱 이슈"]
+    game_data: ["TSV", "게임 데이터", "테이블", "데이터 db", "데이터DB", "데이터db"]
+
+  # §6.1 TSV 정책 (Master 명시: 키워드 명시 시에만 조회, 미명시 시 완전 차단)
+  tsv_policy:
+    mode: "explicit_only"
+    whitelist_keywords: ["tsv", "게임 데이터", "데이터 db", "데이터db"]
+    case_normalize: "lower"  # search_query.lower() 후 매칭
+    block_when_absent: true  # 키워드 부재 시 game_data folder_role SQL 제외
+
+  # §6.3 게임명 한영 alias (task-116 정정 — S3 표준 Lordnine_Asia 대문자 A)
+  game_alias_kr_to_folder:
+    "카제나": "Chaoszero"
+    "카오스제로나이트메어": "Chaoszero"
+    "에픽세븐": "Epicseven"
+    "로드나인 아시아": "Lordnine_Asia"
+    "로드나인": "Lordnine_Asia"
+    "LNA": "Lordnine_Asia"
+
+  # §6.2 시간 표현 정책 (max(folder_date) 단순 비교)
+  temporal_policy:
+    recent_keywords: ["최근", "가장 최근"]
+    sort_by: "ref_date DESC NULLS LAST"
+    conflict_with: ["이번주", "이번달", "어제", "지난주"]  # has_recent_bare() False 반환 조건

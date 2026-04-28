@@ -1,0 +1,4 @@
+# task-115 R-2: routing_spec.yaml v0 baseline SHA
+# Step 2 design v2 §3.3 + §16.2 — v1 승격 시점 v0 source_sha 보관
+# v0 spec.source_sha 자체 (slack_bot.py SHA): 32d0cf0e78ae53bf (drift_detection 용도)
+# 이 파일의 SHA = routing_spec.yaml v0 (149 lines + 3 trailing) 자체 SHA

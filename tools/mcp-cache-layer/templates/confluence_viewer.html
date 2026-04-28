@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>{{TITLE}}</title>
+<style>
+  /* Confluence 기본 스타일 근사 */
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #172B4D;
+    padding: 24px 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+    background: #fff;
+  }
+  h1 { font-size: 24px; margin: 20px 0 12px; border-bottom: 1px solid #dfe1e6; padding-bottom: 8px; }
+  h2 { font-size: 20px; margin: 18px 0 10px; }
+  h3 { font-size: 16px; margin: 14px 0 8px; }
+  h4, h5, h6 { font-size: 14px; margin: 12px 0 6px; font-weight: 600; }
+  p { margin: 8px 0; }
+  a { color: #0052CC; text-decoration: none; }
+
+  /* 테이블 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0;
+  }
+  th, td {
+    border: 1px solid #DFE1E6;
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+    font-size: 13px;
+  }
+  th {
+    background: #F4F5F7;
+    font-weight: 600;
+  }
+  tr:nth-child(even) td { background: #FAFBFC; }
+
+  /* Confluence 매크로 박스 */
+  .confluence-information-macro {
+    border: 1px solid #ccc; border-radius: 3px; margin: 12px 0; padding: 12px 16px;
+  }
+  .confluence-information-macro-information { border-left: 3px solid #2684FF; background: #DEEBFF; }
+  .confluence-information-macro-warning { border-left: 3px solid #FF991F; background: #FFFAE6; }
+  .confluence-information-macro-note { border-left: 3px solid #6554C0; background: #EAE6FF; }
+  .confluence-information-macro-tip { border-left: 3px solid #36B37E; background: #E3FCEF; }
+  .confluence-information-macro .title { font-weight: 600; margin-bottom: 4px; }
+  .aui-icon { display: none; }
+
+  /* 코드 블록 */
+  pre, code {
+    background: #F4F5F7; border-radius: 3px; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px;
+  }
+  pre { padding: 12px; overflow-x: auto; border: 1px solid #DFE1E6; }
+  code { padding: 2px 4px; }
+
+  /* 펼침(expand) 매크로: 기본 펼침 */
+  .expand-container .expand-content { display: block !important; }
+  .expand-control { font-weight: 600; color: #0052CC; margin: 8px 0; }
+
+  /* 상태 매크로 */
+  .status-macro {
+    display: inline-block; padding: 1px 8px; border-radius: 3px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+  }
+
+  /* 레이아웃 */
+  .contentLayout2 { width: 100%; }
+  .columnLayout { display: flex; gap: 16px; }
+  .columnLayout.single .cell { width: 100%; }
+  .columnLayout.two-equal .cell { width: 50%; }
+  .columnLayout.two-left-sidebar .cell:first-child { width: 33%; }
+  .columnLayout.two-left-sidebar .cell:last-child { width: 67%; }
+  .columnLayout.two-right-sidebar .cell:first-child { width: 67%; }
+  .columnLayout.two-right-sidebar .cell:last-child { width: 33%; }
+
+  /* 리스트 */
+  ul, ol { padding-left: 24px; margin: 4px 0; }
+  li { margin: 2px 0; }
+
+  /* 패널 */
+  .panel { border: 1px solid #DFE1E6; border-radius: 3px; margin: 12px 0; }
+  .panelHeader { background: #F4F5F7; padding: 6px 12px; font-weight: 600; border-bottom: 1px solid #DFE1E6; }
+  .panelContent { padding: 12px; }
+
+  /* 이미지 */
+  img { max-width: 100%; height: auto; }
+
+  /* 페이지 타이틀 헤더 */
+  #page-title {
+    font-size: 28px;
+    font-weight: 500;
+    color: #172B4D;
+    margin: 0 0 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #0052CC;
+  }
+</style>
+</head>
+<body>
+<h1 id="page-title">{{TITLE}}</h1>
+<div id="main-content">
+{{BODY}}
+</div>
+</body>
+</html>
