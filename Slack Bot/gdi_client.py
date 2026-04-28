@@ -277,6 +277,24 @@ def _get_gdi_query_logger() -> logging.Logger:
     return _gdi_query_logger
 
 
+def _sanitize_log_field(value):
+    """
+    gdi_query.log 1줄 1엔트리 불변식 보호 (task-118 R-1, OWASP A09).
+
+    분리자 ' | ' (space-padded pipe)는 외부에서 사용. 사용자 입력 안의 ASCII '|'가
+    dashboard parser(s3_server.py: split('|'))에서 필드 desync를 일으키는 것을 차단.
+
+    - ASCII '|' (U+007C) → 전각 '｜' (U+FF5C) 치환
+      · failure_analyzer.py: split(' | ') ASCII 기준 → 전각 통과 (회귀 0)
+      · s3_server.py: split('|') ASCII 기준 → 전각 통과 (안전화)
+      · grep/audit 시 시각 동등하나 parser는 명확히 구분 가능
+    - 빈 값/None은 그대로 반환
+    """
+    if not value:
+        return value
+    return value.replace('|', '｜')
+
+
 def log_gdi_query(*, user_id: str = "", user_name: str = "",
                   action: str, query: str, result: str = "",
                   error: str = "", elapsed_ms: int = 0,
@@ -289,13 +307,21 @@ def log_gdi_query(*, user_id: str = "", user_name: str = "",
     """
     gl     = _get_gdi_query_logger()
     status = "ERROR" if error else "OK"
-    user   = f"{user_name}({user_id})" if user_id else (user_name or "unknown")
 
-    msg = f"{status} | {action} | user={user} | query={query}"
-    if result:
-        msg += f" | result={result}"
-    if error:
-        msg += f" | error={error}"
+    # Slack display_name은 user-controlled — sanitize 필수 (sec-code task-118 closeout)
+    s_user_name = _sanitize_log_field(user_name)
+    s_user_id   = _sanitize_log_field(user_id)
+    user = f"{s_user_name}({s_user_id})" if s_user_id else (s_user_name or "unknown")
+
+    s_query  = _sanitize_log_field(query)
+    s_result = _sanitize_log_field(result)
+    s_error  = _sanitize_log_field(error)
+
+    msg = f"{status} | {action} | user={user} | query={s_query}"
+    if s_result:
+        msg += f" | result={s_result}"
+    if s_error:
+        msg += f" | error={s_error}"
     if cache_status:
         msg += f" | cache={cache_status}"
     if elapsed_ms > 0:
