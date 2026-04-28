@@ -1460,23 +1460,20 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         if not out or out in ('null', '[]'):
             return []
         # Regex fallback (중복 키 회피)
+        # v2.1 fix (2026-04-25): pm2 JSON에 "name" 필드가 앱당 2개
+        # (top-level + pm2_env 내부). "pid" 앵커로 top-level "name"만 매칭.
         import re as _re
         results = []
-        # 각 앱 객체 경계: "pid":N ... "name":"..." ... "status":"..."
+        seen = set()
+        # "pid":N,"name":"..." 패턴으로 top-level name만 매칭 (pm2_env 내부 name 제외)
         for match in _re.finditer(
-            r'"name"\s*:\s*"([^"]+)".*?"pm2_env"\s*:\s*\{[^}]*?"status"\s*:\s*"([^"]+)"[^}]*?\}[^}]*?"pid"\s*:\s*(\d+)',
+            r'"pid"\s*:\s*(\d+)\s*,\s*"name"\s*:\s*"([^"]+)".*?"status"\s*:\s*"([^"]+)"',
             out, _re.DOTALL,
         ):
-            results.append((match.group(1), match.group(2), int(match.group(3))))
-        # 위 패턴이 실패하면 단순 패턴 재시도
-        if not results:
-            names = _re.findall(r'"name"\s*:\s*"([^"]+)"', out)
-            statuses = _re.findall(r'"status"\s*:\s*"([^"]+)"', out)
-            pids = _re.findall(r'"pid"\s*:\s*(\d+)', out)
-            for i, name in enumerate(names):
-                st = statuses[i] if i < len(statuses) else 'unknown'
-                pid = int(pids[i]) if i < len(pids) else 0
-                results.append((name, st, pid))
+            name = match.group(2)
+            if name not in seen:
+                seen.add(name)
+                results.append((name, match.group(3), int(match.group(1))))
         return results
 
     def _pm2_restart(self, app_name):
@@ -1520,72 +1517,49 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         })
 
     def _handle_process_restart_bot(self):
-        """POST /api/process/restart-bot — Slack Bot 전체 종료 후 재실행 (Admin 전용)."""
+        """POST /api/process/restart-bot — pm2를 통한 Slack Bot 재시작 (Admin 전용).
+
+        기존 taskkill+Popen 방식에서 pm2 restart로 전환 (2026-04-25).
+        이유: pm2 autorestart와 Popen이 동시에 봇을 띄워 이중 실행되는 충돌 방지.
+        """
         body = self._read_json_body()
         if not self._check_admin_pw(body):
             return
-        # 1. 기존 slack_bot 프로세스 전부 Kill
-        proc_data = self._dash_processes()
-        bot_pids = [
-            p["pid"] for p in proc_data.get("processes", [])
-            if p["type"] == "slack_bot" and not p.get("is_self")
-        ]
-        for pid in bot_pids:
-            try:
-                subprocess.run(
-                    ['taskkill', '/pid', str(pid), '/f'],
-                    capture_output=True, timeout=10, creationflags=_NO_WINDOW,
-                )
-            except Exception:
-                pass
 
-        # 2. 재실행 (venv Python + 프로젝트 루트 cwd로 .env 로딩 보장)
-        bot_script = os.path.join(_BOT_SRC, "slack_bot.py")
-        if not os.path.exists(bot_script):
-            return self._error_json(404, f"slack_bot.py를 찾을 수 없음: {bot_script}")
+        ok, msg = self._pm2_restart("slack-bot")
+        import time as _t
+        _t.sleep(3)
 
-        venv_python = os.path.join(_PROJECT_ROOT, "venv", "Scripts", "python.exe")
-        python_exe = venv_python if os.path.exists(venv_python) else "python"
+        # 재시작 후 상태 확인
+        new_data = self._dash_processes()
+        bot_running = new_data["system_status"]["slack_bot"]["running"]
+        bot_pid = new_data["system_status"]["slack_bot"].get("pid")
 
-        # .env는 프로젝트 루트에 위치 → cwd를 루트로 설정
-        # slack_bot.py 내부 load_dotenv()가 cwd 기준으로 .env 탐색
-        env = os.environ.copy()
-        env["PYTHONIOENCODING"] = "utf-8"
+        # pm2 list에서 상태도 확인
+        pm2_apps = self._pm2_list()
+        pm2_status = "unknown"
+        for (name, status, pid) in pm2_apps:
+            if name == "slack-bot":
+                pm2_status = status
+                if pid:
+                    bot_pid = pid
+                break
 
-        try:
-            proc = subprocess.Popen(
-                [python_exe, bot_script, '--commands-only'],
-                cwd=_PROJECT_ROOT,  # .env가 있는 프로젝트 루트
-                env=env,
-                creationflags=_NO_WINDOW,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            import time
-            time.sleep(4)
-            # 재시작 확인: 새 프로세스가 살아있는지 + dashboard 조회
-            alive = proc.poll() is None
-            new_data = self._dash_processes()
-            bot_running = new_data["system_status"]["slack_bot"]["running"]
-            self._json_response({
-                "success": alive and bot_running,
-                "killed_pids": bot_pids,
-                "new_pid": proc.pid if alive else None,
-                "message": "봇 재시작 완료" if (alive and bot_running) else
-                           f"봇 프로세스 시작 실패 (exit={proc.returncode})" if not alive else
-                           "봇 재시작 실패 — 프로세스 확인 필요",
-            })
-        except Exception as e:
-            self._error_json(500, f"봇 재실행 실패: {e}")
+        self._json_response({
+            "success": ok and bot_running,
+            "killed_pids": [],
+            "new_pid": bot_pid,
+            "pm2_status": pm2_status,
+            "message": f"pm2 restart slack-bot 완료 · 상태: {pm2_status}" if ok and bot_running else
+                       f"봇 재시작 실패: {msg}",
+        })
 
     # ── 서버 재시작 메타데이터 (단일 진실 공급원) ─────────────────
     # 새 서버 추가 시 여기 한 곳만 등록
     _RESTART_TARGETS = {
         "slack_bot": {
             "label": "Slack Bot",
-            "kill_type": "slack_bot",
-            "exec": ["{venv_python}", "{root}/Slack Bot/slack_bot.py", "--commands-only"],
-            "cwd": "{root}",
+            "pm2_name": "slack-bot",
         },
         "s3_server": {
             "label": "KIS Server",
@@ -1647,10 +1621,6 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         if not cfg:
             self._error_json(400, f"알 수 없는 target: {target}")
             return
-
-        # slack_bot은 기존 전용 핸들러 위임 (검증된 경로 유지)
-        if target == "slack_bot":
-            return self._handle_process_restart_bot()
 
         # pm2 관리 앱: 네이티브 pm2 restart 로 위임 (kill/spawn 경합 방지)
         if cfg.get("pm2_name"):
