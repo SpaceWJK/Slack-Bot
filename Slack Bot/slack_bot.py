@@ -1021,7 +1021,7 @@ def _jira_help(respond):
         "/jira help                           이 도움말\n"
         "```\n\n"
         "프로젝트 목록:\n"
-        "• `에픽세븐` / `EP7`\n"
+        "• `에픽세븐` / `GEP`\n"
         "• `리젝` / `PRH`\n"
         "• `카제나` / `GCZ`\n"
         "• `QA팀` / `SMQA`\n"
@@ -1029,7 +1029,7 @@ def _jira_help(respond):
         "• `로드나인아시아` / `LNA`\n\n"
         "예시:\n"
         "• `/jira 에픽세븐 \\ 접속 불가 이슈 알려줘`\n"
-        "• `/jira EP7 \\ 최근 Compatibility 버그 요약`"
+        "• `/jira GEP \\ 최근 Compatibility 버그 요약`"
     ))
 
 
@@ -2181,7 +2181,7 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
     # game_aliases.py 에서 게임명→프로젝트 키 매핑 (qa팀은 게임 아닌 별도 추가)
     from game_aliases import get_jira_project_key as _ga_jira_key
     _JIRA_EXTRA_NAMES = {"qa팀": "SMQA"}  # 게임 아닌 프로젝트 (game_aliases에 없음)
-    _JIRA_VALID_KEYS = {"PRH", "EP7", "GCZ", "SMQA", "LDN", "LNA"}
+    _JIRA_VALID_KEYS = {"PRH", "EP7", "GEP", "GCZ", "SMQA", "LDN", "LNA"}
 
     def _resolve_jira_project(text: str):
         """프로젝트명 또는 키 → 프로젝트 키. 매핑 없으면 None."""

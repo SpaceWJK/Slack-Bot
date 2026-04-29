@@ -25,9 +25,9 @@ GAMES = [
         "canonical": "에픽세븐",
         "aliases": [
             "에픽세븐", "에픽 세븐", "에픽", "epic", "epicseven",
-            "epic seven", "epic7", "ep7",
+            "epic seven", "epic7", "ep7", "gep",
         ],
-        "jira_key": "EP7",
+        "jira_key": "GEP",
         "wiki_path_keywords": ["에픽세븐", "EP |", "EP7"],
         "wiki_ancestor_id": 58043932,       # 에픽세븐 루트 페이지 ID
     },
