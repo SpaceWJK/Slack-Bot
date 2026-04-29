@@ -1109,8 +1109,11 @@ def _jira_projects(client, user_id: str, user_name: str, respond):
 
 def _jira_claude_call(prompt: str, source_label: str, question: str,
                       respond, source_url: str = "",
-                      display_question: str = ""):
-    """Jira 컨텍스트 기반 Claude API 호출 + 통합 포맷 응답 전송."""
+                      display_question: str = "", prefix: str = ""):
+    """Jira 컨텍스트 기반 Claude API 호출 + 통합 포맷 응답 전송.
+
+    prefix: intent_summary 등 Claude 응답 앞에 붙일 텍스트 (M-3 시정).
+    """
     import anthropic
 
     api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
@@ -1152,23 +1155,27 @@ def _jira_claude_call(prompt: str, source_label: str, question: str,
     except Exception:
         pass
 
-    respond(text=format_ai_response(
+    full_text = format_ai_response(
         question=question,
         raw_answer=answer,
         source_type="jira",
         source_label=source_label,
         source_url=source_url,
         display_question=display_question,
-    ))
+    )
+    if prefix:
+        full_text = prefix + "\n\n" + full_text
+    respond(text=full_text)
 
 
 def _jira_ask_claude(context_text: str, source_label: str,
                      question: str, respond, source_url: str = "",
-                     display_question: str = ""):
+                     display_question: str = "", prefix: str = ""):
     """Jira 이슈/검색 결과를 컨텍스트로 Claude AI에 질문.
 
     context_text에는 이슈 유형, 우선순위, 태그(라벨/컴포넌트/버전) 등
     enrichment 수준의 메타데이터가 포함되어 정확한 답변을 돕습니다.
+    prefix: intent_summary 등 Claude 응답 앞에 붙일 텍스트 (M-3 시정).
     """
     MAX_CHARS = 20000
     truncated = len(context_text) > MAX_CHARS
@@ -1187,7 +1194,7 @@ def _jira_ask_claude(context_text: str, source_label: str,
     )
     _jira_claude_call(prompt, source_label, question, respond,
                       source_url=source_url,
-                      display_question=display_question)
+                      display_question=display_question, prefix=prefix)
 
 
 # ── 단일 인스턴스 보장 ────────────────────────────────────────
@@ -2267,42 +2274,76 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
                     # 프로젝트명 or 프로젝트 키 → 스코프 검색
                     project_key = _resolve_jira_project(target)
                     if project_key:
-                        # broadening 패턴 (상태 의도 감지 포함)
-                        jql_variants = jc.question_to_jql_variants(
-                            question, project_key=project_key
-                        )
-                        data, err, used_jql = None, None, ""
-                        for jql in jql_variants:
-                            data, err = jira_cli.search_issues(jql)
-                            used_jql = jql
-                            if err:
-                                break  # MCP 오류 시 더 시도해봐야 의미 없음
-                            context = jc.get_search_context_text(data)
-                            if context:
-                                break  # 결과 있음
-                            logger.info(f"[jira][broadening] 0건 → 다음 JQL 시도: {jql}")
+                        # ── Stage 1: Intent 추출 ──────────────────────────────────────
+                        intent = jc.extract_intent(question, project_key=project_key)
+                        intent_summary = jc.format_intent_summary(intent, None)  # ai_failed 경우 경고 메시지
 
-                        elapsed = int((time.time() - t0) * 1000)
-                        if err:
-                            respond(text=f":x: 검색 실패\n```\n{err}\n```")
+                        if intent.ai_failed:
+                            # AI 실패 → 기존 rule-based fallback (회귀 없음 보장)
+                            logger.info("[jira] AI Intent 실패 → rule-based fallback")
+                            jql_variants = jc.question_to_jql_variants(question, project_key=project_key)
+                            data, err = None, None
+                            for jql in jql_variants:
+                                data, err = jira_cli.search_issues(jql)
+                                if err:
+                                    break
+                                if jc.get_search_context_text(data):
+                                    break
+                                logger.info(f"[jira][broadening] 0건 → 다음 JQL 시도: {jql}")
+                            elapsed = int((time.time() - t0) * 1000)
+                            if err:
+                                respond(text=f":x: 검색 실패\n```\n{err}\n```")
+                                jc.log_jira_query(user_id=user_id, user_name=user_name,
+                                                  action="ask_claude_project", query=text,
+                                                  error=str(err), elapsed_ms=elapsed)
+                                return
+                            context = jc.get_search_context_text(data)
+                            if not context:
+                                respond(text=f"{intent_summary}\n:information_source: *{target}* 프로젝트에서 관련 이슈를 찾을 수 없습니다.".strip())
+                                return
+                            mirror_age = data.get("_mirror_age") if isinstance(data, dict) else None
+                            _jira_ask_claude(context, target, question, respond,
+                                             display_question=f"/jira {text}",
+                                             prefix=intent_summary)
+                            if mirror_age:
+                                respond(text=f"_(미러 기준 {mirror_age} — MCP 장애로 로컬 캐시 사용)_")
                             jc.log_jira_query(user_id=user_id, user_name=user_name,
                                               action="ask_claude_project", query=text,
-                                              error=str(err), elapsed_ms=elapsed)
-                            return
-                        # 미러 fallback 사용 시 타임스탬프 표시 (task-108)
-                        mirror_age = data.get("_mirror_age") if isinstance(data, dict) else None
-                        context = jc.get_search_context_text(data)
-                        if not context:
-                            respond(text=f":information_source: *{target}* 프로젝트에서 관련 이슈를 찾을 수 없습니다.")
-                            return
-                        _jira_ask_claude(context, target, question, respond,
-                                        display_question=f"/jira {text}")
-                        if mirror_age:
-                            respond(text=f"_(미러 기준 {mirror_age} — MCP 장애로 로컬 캐시 사용)_")
-                        jc.log_jira_query(user_id=user_id, user_name=user_name,
-                                          action="ask_claude_project", query=text,
-                                          result=f"프로젝트: {project_key}",
-                                          elapsed_ms=elapsed)
+                                              result=f"프로젝트: {project_key}", elapsed_ms=elapsed)
+
+                        else:
+                            # ── Stage 2+3: JQL 빌드 + 완화 사다리 ─────────────────────
+                            search_result = jc.search_with_ladder(jira_cli, intent)
+                            elapsed = int((time.time() - t0) * 1000)
+
+                            if search_result.error:
+                                respond(text=f":x: 검색 실패\n```\n{search_result.error}\n```")
+                                jc.log_jira_query(user_id=user_id, user_name=user_name,
+                                                  action="ask_claude_project", query=text,
+                                                  error=search_result.error, elapsed_ms=elapsed)
+                                return
+
+                            # Stage 4: UX — intent 해석 (search_result 포함하여 완화 이력 생성)
+                            intent_summary = jc.format_intent_summary(intent, search_result)
+
+                            if search_result.total_count == 0:
+                                # 0건 (완화 시도 포함) — intent 해석 + 완화 이력 노출
+                                respond(text=intent_summary)
+                                jc.log_jira_query(user_id=user_id, user_name=user_name,
+                                                  action="ask_claude_project", query=text,
+                                                  result="0건", elapsed_ms=elapsed)
+                                return
+
+                            context = jc.get_search_context_text(search_result.data)
+                            mirror_age = search_result.data.get("_mirror_age") if isinstance(search_result.data, dict) else None
+                            _jira_ask_claude(context, target, question, respond,
+                                             display_question=f"/jira {text}",
+                                             prefix=intent_summary)
+                            if mirror_age:
+                                respond(text=f"_(미러 기준 {mirror_age} — MCP 장애로 로컬 캐시 사용)_")
+                            jc.log_jira_query(user_id=user_id, user_name=user_name,
+                                              action="ask_claude_project", query=text,
+                                              result=f"프로젝트: {project_key}", elapsed_ms=elapsed)
 
                     elif jc.looks_like_issue_key(target):
                         # 이슈키 → 이슈 조회 → AI 답변

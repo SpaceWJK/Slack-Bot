@@ -25,6 +25,9 @@ import re
 import json
 import logging
 import time
+import datetime as _dt
+from dataclasses import dataclass, field, replace
+from typing import Optional
 
 from mcp_session import McpSession
 from game_aliases import resolve_game, detect_game_in_text
@@ -111,14 +114,14 @@ def _extract_project_from_jql(jql: str) -> str:
     return m.group(1).upper() if m else ""
 
 
+# NOTE: JIRA_MCP_URL은 기본값이 있어 모듈 레벨 평가 OK.
+# JIRA_USERNAME/JIRA_TOKEN은 .env 로드 전 import 시 빈 값이 되므로
+# _get_mcp()에서 lazy 평가한다 (2026-04-29 fix).
 JIRA_MCP_URL = os.getenv(
     "JIRA_MCP_URL", "http://mcp.sginfra.net/confluence-jira-mcp"
 )
 if JIRA_MCP_URL.startswith("http://"):
     logger.warning("[jira] JIRA_MCP_URL이 평문 HTTP입니다 — 토큰이 평문 전송될 수 있습니다.")
-_JIRA_USERNAME = os.getenv("JIRA_USERNAME", "")
-if not _JIRA_USERNAME:
-    logger.warning("[jira] JIRA_USERNAME 환경변수가 설정되지 않았습니다.")
 
 # ── Jira 조회 전용 로거 (logs/jira_query.log) ────────────────────────────
 _jira_query_logger: "logging.Logger | None" = None
@@ -184,11 +187,17 @@ _mcp_session: "McpSession | None" = None
 def _get_mcp() -> McpSession:
     global _mcp_session
     if _mcp_session is None:
+        username = os.getenv("JIRA_USERNAME", "")
+        token = os.getenv("JIRA_TOKEN", "")
+        if not username:
+            logger.warning("[jira] JIRA_USERNAME 환경변수가 설정되지 않았습니다.")
+        if not token:
+            logger.warning("[jira] JIRA_TOKEN 환경변수가 설정되지 않았습니다.")
         _mcp_session = McpSession(
             url=JIRA_MCP_URL,
             headers={
-                "x-confluence-jira-username": _JIRA_USERNAME,
-                "x-confluence-jira-token": os.getenv("JIRA_TOKEN", ""),
+                "x-confluence-jira-username": username,
+                "x-confluence-jira-token": token,
             },
             label="jira",
         )
@@ -238,6 +247,121 @@ def _extract_keywords(text: str) -> list:
     return keywords if keywords else words[:3]
 
 
+# ── 날짜 의도 감지 ──────────────────────────────────────────────────────
+
+# "N월 N일" 패턴
+_DATE_ABS_RE = re.compile(r'(\d{1,2})월\s*(\d{1,2})일')
+
+# "YYYY-MM-DD" 또는 "YYYY.MM.DD" 또는 "YYYY/MM/DD"
+_DATE_ISO_RE = re.compile(r'(\d{4})[-./](\d{1,2})[-./](\d{1,2})')
+
+# "최근 N일/주/달" 패턴
+_DATE_RECENT_RE = re.compile(r'최근\s*(\d+)\s*(일|주|주일|개월|달)')
+
+# "N일/주/달 전/이내" 패턴
+_DATE_AGO_RE = re.compile(r'(\d+)\s*(일|주|주일|개월|달)\s*(전|이내)')
+
+# 상대 날짜 키워드 → JQL 값
+_DATE_RELATIVE_MAP = [
+    ('이번 주', 'startOfWeek()'),
+    ('이번주',  'startOfWeek()'),
+    ('지난 주', 'startOfWeek(-1)'),
+    ('지난주',  'startOfWeek(-1)'),
+    ('이번 달', 'startOfMonth()'),
+    ('이번달',  'startOfMonth()'),
+    ('지난 달', 'startOfMonth(-1)'),
+    ('지난달',  'startOfMonth(-1)'),
+    ('올해',    'startOfYear()'),
+    ('어제',    'startOfDay(-1)'),
+    ('오늘',    'startOfDay()'),
+]
+
+# created vs updated 판별
+_CREATED_KW = re.compile(r'(생성|등록|올라온|발생|만든|접수|작성)')
+_UPDATED_KW = re.compile(r'(수정|업데이트|변경|갱신)')
+
+# 날짜 관련 불용어 (키워드에서 제거)
+_DATE_NOISE = re.compile(
+    r'(부터|까지|이후|이전|사이|동안|생성된|등록된|올라온|발생된|발생한|'
+    r'수정된|업데이트된|변경된|현재까지|지금까지|오늘까지|에서)',
+)
+
+
+def _detect_date_filter(question: str) -> "tuple[str | None, str]":
+    """자연어 질문에서 날짜 의도를 감지하여 JQL 날짜 조건을 반환.
+
+    Returns
+    -------
+    (date_clause, cleaned_question)
+        date_clause     : JQL 날짜 조건 (예: 'created >= "2026-04-27"'), 없으면 None
+        cleaned_question: 날짜 관련 텍스트가 제거된 질문 (키워드 추출용)
+    """
+    date_field = "created"
+    if _UPDATED_KW.search(question):
+        date_field = "updated"
+
+    date_value = None
+    cleaned = question
+
+    # 1. YYYY-MM-DD 패턴
+    m = _DATE_ISO_RE.search(question)
+    if m:
+        date_value = f'"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"'
+        cleaned = question[:m.start()] + question[m.end():]
+
+    # 2. "N월 N일" 패턴
+    if not date_value:
+        m = _DATE_ABS_RE.search(question)
+        if m:
+            month, day = int(m.group(1)), int(m.group(2))
+            year = _dt.date.today().year
+            date_value = f'"{year}-{month:02d}-{day:02d}"'
+            cleaned = question[:m.start()] + question[m.end():]
+
+    # 3. "최근 N일/주/달" 패턴
+    if not date_value:
+        m = _DATE_RECENT_RE.search(question)
+        if m:
+            n, unit = int(m.group(1)), m.group(2)
+            if unit in ('주', '주일'):
+                date_value = f'"-{n}w"'
+            elif unit in ('개월', '달'):
+                date_value = f'startOfMonth(-{n})'
+            else:
+                date_value = f'"-{n}d"'
+            cleaned = question[:m.start()] + question[m.end():]
+
+    # 4. "N일/주/달 전/이내" 패턴
+    if not date_value:
+        m = _DATE_AGO_RE.search(question)
+        if m:
+            n, unit = int(m.group(1)), m.group(2)
+            if unit in ('주', '주일'):
+                date_value = f'"-{n}w"'
+            elif unit in ('개월', '달'):
+                date_value = f'startOfMonth(-{n})'
+            else:
+                date_value = f'"-{n}d"'
+            cleaned = question[:m.start()] + question[m.end():]
+
+    # 5. 상대 날짜 키워드 (오늘, 어제, 이번주 등)
+    if not date_value:
+        for kw, jql_val in _DATE_RELATIVE_MAP:
+            if kw in question:
+                date_value = jql_val
+                cleaned = cleaned.replace(kw, '', 1)
+                break
+
+    if not date_value:
+        return None, question
+
+    # 날짜 관련 노이즈 제거 후 정리
+    cleaned = _DATE_NOISE.sub('', cleaned)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+
+    return f'{date_field} >= {date_value}', cleaned
+
+
 def _inject_before_order(jql: str, clause: str) -> str:
     """ORDER BY 앞에 AND 절을 삽입합니다.
 
@@ -273,6 +397,9 @@ def question_to_jql(question: str, project_key: str = "") -> str:
     from keyword_rules import match_jira_keyword_rule
     kw_rule = match_jira_keyword_rule(question, project_key=project_key)
 
+    # ── 날짜 의도 감지 ────────────────────────────────────────────
+    date_clause, question_cleaned = _detect_date_filter(question)
+
     # ── 상태 의도 감지 → 상태 필터 JQL 생성 ──────────────────────
     intent_jql = _detect_status_intent(question)
     if intent_jql:
@@ -280,22 +407,34 @@ def question_to_jql(question: str, project_key: str = "") -> str:
             jql = f"project = {project_key} AND {intent_jql}"
         else:
             jql = intent_jql
-        # 규칙 조건 합성
+        if date_clause:
+            jql = _inject_before_order(jql, f'AND {date_clause}')
         if kw_rule:
             jql = _inject_before_order(jql, kw_rule["jql_append"])
         return jql
 
-    keywords = _extract_keywords(question)
+    # 날짜 제거 후 남은 키워드 추출
+    keywords = _extract_keywords(question_cleaned)
     keyword_text = " ".join(keywords)
     safe = keyword_text.replace('"', '\\"')
-    jql = f'text ~ "{safe}" ORDER BY updated DESC'
+
+    # 키워드가 있으면 text ~ + 날짜, 없으면 날짜만
+    if safe.strip():
+        jql = f'text ~ "{safe}" ORDER BY updated DESC'
+    elif date_clause:
+        jql = 'ORDER BY updated DESC'
+    else:
+        jql = f'text ~ "{safe}" ORDER BY updated DESC'
+
     if project_key:
         if " ORDER BY " in jql.upper():
             idx = jql.upper().index(" ORDER BY ")
             jql = f"project = {project_key} AND {jql[:idx]}{jql[idx:]}"
         else:
             jql = f"project = {project_key} AND {jql}"
-    # 규칙 조건 합성
+
+    if date_clause:
+        jql = _inject_before_order(jql, f'AND {date_clause}')
     if kw_rule:
         jql = _inject_before_order(jql, kw_rule["jql_append"])
     return jql
@@ -369,6 +508,9 @@ def question_to_jql_variants(question: str, project_key: str = "") -> list:
     from keyword_rules import match_jira_keyword_rule
     kw_rule = match_jira_keyword_rule(question, project_key=project_key)
 
+    # ── 날짜 의도 감지 ──────────────────────────────────────────
+    date_clause, question_cleaned = _detect_date_filter(question)
+
     # 상태 의도 감지 시 단일 JQL 반환
     intent_jql = _detect_status_intent(question)
     if intent_jql:
@@ -376,18 +518,14 @@ def question_to_jql_variants(question: str, project_key: str = "") -> list:
             jql = f"project = {project_key} AND {intent_jql}"
         else:
             jql = intent_jql
+        if date_clause:
+            jql = _inject_before_order(jql, f'AND {date_clause}')
         if kw_rule:
             jql = _inject_before_order(jql, kw_rule["jql_append"])
         return [jql]
 
-    keywords = _extract_keywords(question)
-    if not keywords:
-        jql = f'text ~ "{question}" ORDER BY updated DESC'
-        if project_key:
-            jql = f'project = {project_key} AND {jql}'
-        if kw_rule:
-            jql = _inject_before_order(jql, kw_rule["jql_append"])
-        return [jql]
+    # 날짜 제거 후 남은 키워드 추출
+    keywords = _extract_keywords(question_cleaned)
 
     def _with_project(j: str) -> str:
         if not project_key:
@@ -397,25 +535,35 @@ def question_to_jql_variants(question: str, project_key: str = "") -> list:
             return f"project = {project_key} AND {j[:idx]}{j[idx:]}"
         return f"project = {project_key} AND {j}"
 
+    def _with_date(j: str) -> str:
+        if date_clause:
+            return _inject_before_order(j, f'AND {date_clause}')
+        return j
+
     def _with_rule(j: str) -> str:
         if kw_rule:
             return _inject_before_order(j, kw_rule["jql_append"])
         return j
 
+    # 키워드 없고 날짜만 있는 경우 → 날짜 필터만으로 검색
+    if not keywords or not any(k.strip() for k in keywords):
+        jql = _with_rule(_with_date(_with_project('ORDER BY updated DESC')))
+        return [jql]
+
     variants = []
     # 전체 키워드
     full = " ".join(keywords).replace('"', '\\"')
-    variants.append(_with_rule(_with_project(f'text ~ "{full}" ORDER BY updated DESC')))
+    variants.append(_with_rule(_with_date(_with_project(f'text ~ "{full}" ORDER BY updated DESC'))))
 
     # 키워드가 2개 이상이면 앞 2개만
     if len(keywords) >= 3:
         partial = " ".join(keywords[:2]).replace('"', '\\"')
-        variants.append(_with_rule(_with_project(f'text ~ "{partial}" ORDER BY updated DESC')))
+        variants.append(_with_rule(_with_date(_with_project(f'text ~ "{partial}" ORDER BY updated DESC'))))
 
     # 첫 키워드만 (2자 이상일 때)
     if len(keywords) >= 2 and len(keywords[0]) >= 2:
         single = keywords[0].replace('"', '\\"')
-        variants.append(_with_rule(_with_project(f'text ~ "{single}" ORDER BY updated DESC')))
+        variants.append(_with_rule(_with_date(_with_project(f'text ~ "{single}" ORDER BY updated DESC'))))
 
     return variants
 
@@ -423,6 +571,479 @@ def question_to_jql_variants(question: str, project_key: str = "") -> list:
 def looks_like_issue_key(text: str) -> bool:
     """이슈 키 패턴(PROJ-123)인지 판별합니다."""
     return bool(_ISSUE_KEY_RE.match(text.strip().upper()))
+
+
+# ── AI 기반 JQL 생성 ───────────────────────────────────────────────────
+
+_JQL_GEN_SYSTEM = """\
+당신은 Jira JQL(Jira Query Language) 전문가입니다.
+사용자의 자연어 질문을 정확한 JQL 쿼리로 변환하세요.
+
+규칙:
+1. 반드시 유효한 JQL만 출력하세요. 설명이나 마크다운 없이 JQL 한 줄만.
+2. 날짜는 JQL 형식 사용: "2026-04-27", "-7d", startOfDay(), startOfWeek(), startOfMonth() 등.
+3. 텍스트 검색은 text ~ "키워드" 사용 (summary 대신 text로 넓은 범위 검색).
+4. 항상 ORDER BY updated DESC 또는 ORDER BY created DESC 를 끝에 추가.
+5. 프로젝트 키가 주어지면 project = KEY 조건을 포함.
+6. 오늘 날짜: {today}. "4월 27일"처럼 연도 없으면 올해({year})로 간주.
+7. "~부터 ~까지" → created >= "시작" AND created <= "끝"
+8. "최근 N일" → created >= "-Nd"
+9. 우선순위 언급 시: priority IN (Critical, Major, Minor, Trivial, Blocker)
+10. 상태 언급 시: status IN/NOT IN ("Open", "In Progress", "Closed", "Done", "Resolved")
+"""
+
+
+def generate_jql_with_ai(question: str, project_key: str = "") -> "str | None":
+    """Claude Haiku를 사용하여 자연어 질문을 JQL로 변환.
+
+    # DEPRECATED — rule-based fallback용으로만 사용 (task-128 Intent JSON 분리 아키텍처로 대체)
+
+    Returns
+    -------
+    str | None : 생성된 JQL, 실패 시 None (fallback으로 question_to_jql_variants 사용)
+    """
+    import anthropic as _anthropic
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return None
+
+    today = _dt.date.today()
+    system_prompt = _JQL_GEN_SYSTEM.format(today=today.isoformat(), year=today.year)
+
+    user_msg = f"질문: {question}"
+    if project_key:
+        user_msg += f"\n프로젝트 키: {project_key}"
+
+    try:
+        client = _anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=256,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        jql = msg.content[0].text.strip()
+        # 마크다운 코드블록 제거
+        if jql.startswith("```"):
+            jql = jql.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        # JQL 유효성 기본 검증 (ORDER BY 포함 여부)
+        if not jql or len(jql) < 10:
+            logger.warning(f"[jira] AI JQL 생성 실패 — 너무 짧음: {jql!r}")
+            return None
+        logger.info(f"[jira][ai-jql] 질문={question!r} → JQL={jql}")
+        return jql
+    except Exception as e:
+        logger.warning(f"[jira] AI JQL 생성 예외: {e}")
+        return None
+
+
+# ── Intent JSON 분리 아키텍처 (task-128) ────────────────────────────────
+
+@dataclass
+class JiraIntent:
+    """자연어 질문에서 추출한 Jira 검색 의도."""
+    project_key: str = ""
+    date_field: Optional[str] = None      # "created" | "updated" | None
+    date_from: Optional[str] = None       # "YYYY-MM-DD"
+    date_to: Optional[str] = None         # "YYYY-MM-DD"
+    status: list = field(default_factory=list)
+    priority: list = field(default_factory=list)
+    assignee: Optional[str] = None        # "currentUser()" | "username"
+    reporter: Optional[str] = None
+    issue_type: list = field(default_factory=list)
+    labels: list = field(default_factory=list)
+    text_keywords: list = field(default_factory=list)
+    order_by: str = "updated DESC"
+    limit: int = 10
+    ambiguity_notes: str = ""
+    ai_failed: bool = False               # True → fallback 경로로 진입
+
+
+@dataclass
+class SearchResult:
+    """search_with_ladder 반환값."""
+    data: object                          # Jira search response
+    jql: str                              # 실제 사용된 JQL
+    relaxation_level: int                 # 0 = 원본 조건 사용
+    jql_history: list                     # [{level, jql, count, label}]
+    total_count: int                      # 최종 이슈 수
+    error: Optional[str] = None
+
+
+# Intent 캐시: 동일 질문 60초 TTL (비용 절약)
+_INTENT_CACHE: "dict[str, tuple]" = {}   # {key: (intent, timestamp)}
+_INTENT_CACHE_TTL = 60                   # seconds
+
+_INTENT_SYSTEM = """\
+당신은 Jira 쿼리 Intent 분석기입니다.
+사용자의 한국어 질문을 분석하여 JSON 객체만 출력하세요.
+설명, 마크다운, 추가 텍스트는 절대 금지.
+
+### 오늘 날짜: {today} (YYYY-MM-DD)
+
+### 출력 JSON 스키마 (모든 필드 필수 포함, 모르면 null/[])
+{{
+  "date_field": "created" | "updated" | null,
+  "date_from": "YYYY-MM-DD" | null,
+  "date_to": "YYYY-MM-DD" | null,
+  "status": ["Open","In Progress",...] | [],
+  "priority": ["High","Highest",...] | [],
+  "assignee": "currentUser()" | "username" | null,
+  "reporter": null,
+  "issue_type": ["Bug","Task",...] | [],
+  "labels": [],
+  "text_keywords": ["명사1","명사2"] | [],
+  "order_by": "created DESC" | "updated DESC",
+  "limit": 10,
+  "ambiguity_notes": "가정/모호성 설명 (없으면 빈 문자열)"
+}}
+
+### 핵심 규칙
+1. 날짜/기간은 date_from/date_to 필드 사용. text_keywords에 절대 포함 금지.
+2. "4월 27일" → 연도={year}, date_from="{year}-04-27", date_to="{year}-04-27"
+3. "부터~까지" → date_from=시작, date_to=끝 (둘 다 필수)
+4. "최근 N일" → date_from=오늘-N일, date_to=오늘
+5. "어제" → date_from=어제, date_to=어제
+6. "이번 주" → date_from=이번주_월요일, date_to=오늘
+7. "이번 달" → date_from=이번달_1일, date_to=오늘
+8. 수정/업데이트 언급 → date_field="updated"; 생성/등록/올라온 → date_field="created"
+9. text_keywords = 검색할 명사 단어만. "이슈","리스트","찾아줘","알려줘","생성된","올라온" 등 메타 단어 제외.
+10. "내가 담당" → assignee="currentUser()"
+11. "미해결/열린/진행중" → status=["Open","In Progress","Reopened"]
+12. "완료/닫힌/해결됨" → status=["Done","Closed","Resolved"]
+13. "버그만/버그" → issue_type=["Bug"]
+14. order_by: 날짜 조건 있으면 "created DESC", 없으면 "updated DESC"
+15. limit: 기본 10, "전부/모두/전체" → 50\
+"""
+
+
+def extract_intent(question: str, project_key: str = "") -> JiraIntent:
+    """자연어 질문 → JiraIntent (AI 또는 fallback).
+
+    실패 시 ai_failed=True인 JiraIntent 반환 (None 반환하지 않음).
+    캐시: 동일 (question, project_key) 60초 TTL.
+    """
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        logger.warning("[jira][intent] ANTHROPIC_API_KEY 미설정 → ai_failed=True")
+        return JiraIntent(project_key=project_key, ai_failed=True)
+
+    # 상대 날짜 포함 시 캐시 키에 오늘 날짜 포함 (B-2 시정)
+    has_relative = any(w in question for w in ["어제", "오늘", "이번", "지난", "최근", "올해"])
+    cache_key = (
+        f"{project_key}::{question}::{_dt.date.today().isoformat()}"
+        if has_relative
+        else f"{project_key}::{question}"
+    )
+
+    # 캐시 확인
+    if cache_key in _INTENT_CACHE:
+        intent, ts = _INTENT_CACHE[cache_key]
+        if time.time() - ts < _INTENT_CACHE_TTL:
+            logger.info("[jira][intent] 캐시 HIT: %r", question[:50])
+            return intent
+
+    today = _dt.date.today()
+    system = _INTENT_SYSTEM.format(today=today.isoformat(), year=today.year)
+
+    user_msg = f"질문: {question}"
+    if project_key:
+        user_msg += f"\n프로젝트 키: {project_key}"
+
+    raw = ""
+    try:
+        import anthropic as _anthropic
+        client = _anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=512,
+            system=system,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        raw = msg.content[0].text.strip()
+
+        # 마크다운 코드블록 제거
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+
+        data = json.loads(raw)
+        intent = JiraIntent(
+            project_key=project_key,
+            date_field=data.get("date_field"),
+            date_from=data.get("date_from"),
+            date_to=data.get("date_to"),
+            status=data.get("status") or [],
+            priority=data.get("priority") or [],
+            assignee=data.get("assignee"),
+            reporter=data.get("reporter"),
+            issue_type=data.get("issue_type") or [],
+            labels=data.get("labels") or [],
+            text_keywords=data.get("text_keywords") or [],
+            order_by=data.get("order_by", "updated DESC"),
+            limit=min(int(data.get("limit", 10)), 50),
+            ambiguity_notes=data.get("ambiguity_notes", ""),
+        )
+
+        logger.info("[jira][intent] question=%r → intent=%s",
+                    question[:80], json.dumps({
+                        "date_field": intent.date_field,
+                        "date_from": intent.date_from, "date_to": intent.date_to,
+                        "status": intent.status, "priority": intent.priority,
+                        "keywords": intent.text_keywords,
+                    }, ensure_ascii=False))
+
+        _INTENT_CACHE[cache_key] = (intent, time.time())
+        return intent
+
+    except (json.JSONDecodeError, KeyError, AttributeError) as e:
+        logger.warning("[jira][intent] JSON 파싱 실패: %s | raw=%r", e, raw[:100])
+        return JiraIntent(project_key=project_key, ai_failed=True)
+    except Exception as e:
+        logger.warning("[jira][intent] AI 호출 실패: %s", e)
+        return JiraIntent(project_key=project_key, ai_failed=True)
+
+
+def _next_day(date_str: str) -> str:
+    """YYYY-MM-DD → 다음 날짜 문자열."""
+    d = _dt.date.fromisoformat(date_str)
+    return (d + _dt.timedelta(days=1)).isoformat()
+
+
+def build_jql_from_intent(intent: JiraIntent) -> str:
+    """JiraIntent → JQL 문자열 (결정론적, 동일 intent = 동일 JQL).
+
+    JQL 인젝션 방어: project_key/assignee/reporter 화이트리스트 검증,
+    text_keywords 특수문자 escape 및 메타 키워드 제거.
+    """
+    clauses = []
+
+    # 1. 프로젝트 (인젝션 방어: 영대문자+숫자+_- 만 허용)
+    if intent.project_key:
+        safe_pkey = re.sub(r"[^A-Z0-9_-]", "", intent.project_key.upper())
+        if safe_pkey:
+            clauses.append(f"project = {safe_pkey}")
+
+    # 2. 날짜 조건
+    if intent.date_from and intent.date_field:
+        df = intent.date_field   # "created" or "updated"
+        date_from = intent.date_from
+        date_to = intent.date_to or intent.date_from
+
+        if date_from == date_to:
+            clauses.append(f'{df} >= "{date_from}" AND {df} < "{_next_day(date_to)}"')
+        else:
+            clauses.append(f'{df} >= "{date_from}" AND {df} <= "{date_to}"')
+
+    # 3. 상태 (MEDIUM-1 시정: 내부 따옴표 escape)
+    if intent.status:
+        status_list = ", ".join(f'"{s.replace(chr(92), chr(92)+chr(92)).replace(chr(34), chr(92)+chr(34))}"' for s in intent.status)
+        clauses.append(f"status IN ({status_list})")
+
+    # 4. 우선순위 (MEDIUM-1 시정)
+    if intent.priority:
+        pri_list = ", ".join(f'"{p.replace(chr(92), chr(92)+chr(92)).replace(chr(34), chr(92)+chr(34))}"' for p in intent.priority)
+        clauses.append(f"priority IN ({pri_list})")
+
+    # 5. 담당자/보고자 (인젝션 방어: 영숫자+@+._()- 만 허용)
+    if intent.assignee:
+        if intent.assignee == "currentUser()":
+            clauses.append("assignee = currentUser()")
+        else:
+            safe_assignee = re.sub(r'[^A-Za-z0-9@._()-]', '', intent.assignee)
+            if safe_assignee:
+                clauses.append(f'assignee = "{safe_assignee}"')
+    if intent.reporter:
+        safe_reporter = re.sub(r'[^A-Za-z0-9@._()-]', '', intent.reporter)
+        if safe_reporter:
+            clauses.append(f'reporter = "{safe_reporter}"')
+
+    # 6. 이슈 유형 (MEDIUM-1 시정)
+    if intent.issue_type:
+        type_list = ", ".join(f'"{t.replace(chr(92), chr(92)+chr(92)).replace(chr(34), chr(92)+chr(34))}"' for t in intent.issue_type)
+        clauses.append(f"issuetype IN ({type_list})")
+
+    # 7. 라벨 (LOW-1 시정: 역슬래시 선처리)
+    if intent.labels:
+        for label in intent.labels:
+            safe_label = label.replace('\\', '\\\\').replace('"', '\\"')
+            clauses.append(f'labels = "{safe_label}"')
+
+    # 8. 텍스트 키워드 (JQL 인젝션 방어)
+    if intent.text_keywords:
+        safe_keywords = []
+        for kw in intent.text_keywords:
+            kw_clean = kw.replace('\\', '\\\\').replace('"', '\\"')
+            # ORDER BY, DROP, INSERT, UPDATE, ; 포함 토큰 제거
+            if re.search(r'(?i)(order\s*by|;|drop\s|insert\s|update\s)', kw_clean):
+                logger.warning("[jira][build] JQL 인젝션 의심 키워드 제거: %r", kw)
+                continue
+            safe_keywords.append(kw_clean)
+        if safe_keywords:
+            keyword_str = " ".join(safe_keywords)
+            clauses.append(f'text ~ "{keyword_str}"')
+
+    # ORDER BY — 화이트리스트 (HIGH-1 시정)
+    _ALLOWED_ORDER = {"updated DESC", "updated ASC", "created DESC", "created ASC"}
+    order = intent.order_by if intent.order_by in _ALLOWED_ORDER else "updated DESC"
+
+    if not clauses:
+        # 아무 조건 없으면 프로젝트만
+        if intent.project_key:
+            safe_pkey = re.sub(r"[^A-Z0-9_-]", "", intent.project_key.upper())
+            return f"project = {safe_pkey} ORDER BY {order}"
+        return f"ORDER BY {order}"
+
+    return " AND ".join(clauses) + f" ORDER BY {order}"
+
+
+def search_with_ladder(jira_cli, intent: JiraIntent,
+                       max_queries: int = 4) -> SearchResult:
+    """Intent로 JQL 생성 → 0건이면 자동 완화 → 최대 max_queries회 시도.
+
+    완화 순서:
+      L0: 원본 (모든 조건)
+      L1: status 제거
+      L2: status+priority 제거
+      L3: keywords 절반 + 날짜 ±7일 확장
+      이후: 결과 있으면 정지, 없으면 다음 단계
+
+    에러 분류:
+      - auth/5xx/timeout 에러 → 즉시 반환 (완화 무의미)
+      - JQL syntax error(400) → 다음 ladder 진행
+    """
+    history = []
+    queries_used = 0
+    seen_jqls: "set[str]" = set()   # 중복 JQL 방지 (M-2 시정)
+
+    def _is_fatal_error(err: str) -> bool:
+        """인증/5xx/타임아웃 에러 → True (ladder 중단). JQL syntax → False (계속)."""
+        lower = err.lower()
+        return any(k in lower for k in ("인증", "401", "403", "timeout", "500", "502", "503"))
+
+    def _try(relaxed_intent: JiraIntent, level: int, label: str) -> "Optional[SearchResult]":
+        nonlocal queries_used
+        if queries_used >= max_queries:
+            return None
+
+        jql = build_jql_from_intent(relaxed_intent)
+        # 중복 JQL 건너뜀 (M-2: L1/L2가 동일 JQL 생성 시 낭비 방지)
+        if jql in seen_jqls:
+            logger.info("[jira][ladder] 중복 JQL skip (L%d): %s", level, jql[:80])
+            return None
+        seen_jqls.add(jql)
+
+        data, err = jira_cli.search_issues(jql, max_results=relaxed_intent.limit)
+        queries_used += 1
+
+        count = 0
+        if data and isinstance(data, dict):
+            issues = data.get("issues", [])
+            count = len(issues)
+
+        history.append({"level": level, "jql": jql, "count": count, "label": label})
+
+        if err:
+            if _is_fatal_error(str(err)):
+                # auth/5xx → 즉시 반환 (A-3 시정)
+                return SearchResult(data=None, jql=jql, relaxation_level=level,
+                                    jql_history=history, total_count=0, error=str(err))
+            # JQL syntax error → None 반환하여 다음 ladder 진행
+            logger.info("[jira][ladder] JQL 오류(L%d) → 다음 단계: %s", level, err)
+            return None
+        if count > 0:
+            return SearchResult(data=data, jql=jql, relaxation_level=level,
+                                jql_history=history, total_count=count)
+        return None  # 0건 → 계속 완화
+
+    # L0: 원본
+    result = _try(intent, 0, "원본 조건")
+    if result:
+        return result
+
+    # L1: status 제거
+    if intent.status and queries_used < max_queries:
+        r1 = replace(intent, status=[])
+        result = _try(r1, 1, "상태 조건 제거")
+        if result:
+            return result
+
+    # L2: status + priority 제거 (L1과 동일 JQL이면 seen_jqls로 자동 skip)
+    if (intent.status or intent.priority) and queries_used < max_queries:
+        r2 = replace(intent, status=[], priority=[])
+        result = _try(r2, 2, "상태·우선순위 조건 제거")
+        if result:
+            return result
+
+    # L3: 날짜 범위 ±7일 확장 + keywords 절반
+    if queries_used < max_queries:
+        r3_kwargs: dict = {"status": [], "priority": []}
+        if intent.date_from:
+            d_from = _dt.date.fromisoformat(intent.date_from)
+            d_to = _dt.date.fromisoformat(intent.date_to or intent.date_from)
+            r3_kwargs["date_from"] = (d_from - _dt.timedelta(days=7)).isoformat()
+            r3_kwargs["date_to"] = (d_to + _dt.timedelta(days=7)).isoformat()
+        if intent.text_keywords and len(intent.text_keywords) > 1:
+            r3_kwargs["text_keywords"] = intent.text_keywords[:max(1, len(intent.text_keywords) // 2)]
+        r3 = replace(intent, **r3_kwargs)
+        result = _try(r3, 3, "날짜 ±7일 확장·조건 완화")
+        if result:
+            return result
+
+    # 모두 0건 → 빈 결과 반환 (history 포함)
+    last_jql = history[-1]["jql"] if history else build_jql_from_intent(intent)
+    return SearchResult(data=None, jql=last_jql, relaxation_level=-1,
+                        jql_history=history, total_count=0)
+
+
+def format_intent_summary(intent: JiraIntent, result: "Optional[SearchResult]") -> str:
+    """Slack 메시지에 추가할 "이해한 내용 + 결과 요약" 블록.
+
+    - intent.ai_failed=True  → 경고 메시지 반환 (빈 문자열 금지 — ISS-007)
+    - result=None            → 완화 이력 없이 intent 해석만 반환 (ai_failed 경로)
+    - result.total_count==0  → 완화 이력 + 0건 메시지
+    """
+    if intent.ai_failed:
+        # C-2 + MAJOR-4 시정: silent fallback 금지
+        return ":warning: 자연어 분석 실패 — 키워드 매칭으로 대체합니다"
+
+    parts = [":mag: *이해한 내용*"]
+
+    # 날짜
+    if intent.date_from:
+        date_label = "생성일" if intent.date_field == "created" else "수정일"
+        if intent.date_from == intent.date_to or not intent.date_to:
+            parts.append(f"  • 기간: {intent.date_from} ({date_label} 기준)")
+        else:
+            parts.append(f"  • 기간: {intent.date_from} ~ {intent.date_to} ({date_label} 기준)")
+
+    if intent.status:
+        parts.append(f"  • 상태: {', '.join(intent.status)}")
+    if intent.priority:
+        parts.append(f"  • 우선순위: {', '.join(intent.priority)}")
+    if intent.assignee:
+        label = "나" if intent.assignee == "currentUser()" else intent.assignee
+        parts.append(f"  • 담당자: {label}")
+    if intent.issue_type:
+        parts.append(f"  • 유형: {', '.join(intent.issue_type)}")
+    if intent.text_keywords:
+        parts.append(f"  • 키워드: {', '.join(intent.text_keywords)}")
+    if intent.ambiguity_notes:
+        parts.append(f"  • 가정: _{intent.ambiguity_notes}_")
+
+    # 완화 이력 (result=None이면 생략 — ai_failed 경로에서 호출 시 안전)
+    if result is not None:
+        if result.relaxation_level > 0:
+            h = result.jql_history
+            parts.append(
+                f"\n:warning: 원래 조건으로 0건 → 자동 완화 ({h[-1]['label']}) → *{result.total_count}건*"
+            )
+        elif result.relaxation_level == -1:
+            # 모두 0건
+            parts.append("\n:x: 조건을 완화해도 결과 없음")
+            parts.append(f"  :bulb: 더 넓은 조건으로: `/jira {intent.project_key} \\ {{단순 키워드}}`")
+
+    return "\n".join(parts)
 
 
 # ── JiraClient ───────────────────────────────────────────────────────────

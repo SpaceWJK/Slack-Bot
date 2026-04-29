@@ -1,6 +1,22 @@
 {
   "timezone": "Asia/Seoul",
 
+  "jira_intents": {
+    "status_synonyms": {
+      "미해결": ["Open", "In Progress", "Reopened"],
+      "진행중": ["In Progress"],
+      "완료": ["Done", "Closed", "Resolved"],
+      "열린": ["Open", "Reopened"],
+      "닫힌": ["Done", "Closed", "Resolved"]
+    },
+    "priority_synonyms": {
+      "높음": ["High", "Highest", "Critical", "Blocker"],
+      "낮음": ["Low", "Lowest", "Trivial"],
+      "긴급": ["Highest", "Critical", "Blocker"]
+    }
+  },
+
+
   "monitor_alert_channel": "C0AKPGBSY7K",
 
   "user_map": {
