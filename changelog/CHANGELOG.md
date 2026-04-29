@@ -20,6 +20,21 @@
 
 ---
 
+## [1.7.4] - 2026-04-29
+
+### 개선 (task-128)
+- `/jira` 자연어 질의 엔진 전면 재설계 — Intent JSON 분리 아키텍처 도입
+  - **Stage 1**: `extract_intent()` — Claude Haiku가 질문을 JSON Intent로 구조화 (날짜/상태/우선순위/담당자/타입/키워드 분리 추출)
+  - **Stage 2**: `build_jql_from_intent()` — Intent → 결정론적 JQL (인젝션 방어 포함)
+  - **Stage 3**: `search_with_ladder()` — 0건 시 자동 완화 사다리 (L0~L3, max 4 query, 중복 JQL skip)
+  - **Stage 4**: `format_intent_summary()` — "🔍 이해한 내용" + 완화 이력 UX 노출
+- 날짜 범위 지원: "4월 27일부터 29일까지 생성된 이슈" → `created >= "2026-04-27" AND created <= "2026-04-29"` (기존 0건 → 정상 조회)
+- AI 실패 시 기존 키워드 검색 fallback 보장 (회귀 없음)
+- 보안: `order_by` 화이트리스트, `status`/`priority`/`issue_type` 내부 따옴표 escape
+- `_jira_claude_call`/`_jira_ask_claude` prefix 파라미터 추가 (응답 앞에 해석 내용 표시)
+
+---
+
 ## [1.7.3] - 2026-04-28
 
 ### 보안 (task-118 / task-119)
