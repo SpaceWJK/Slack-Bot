@@ -1,3 +1,4 @@
 # mcp-cache-layer dependencies
 # sqlite3는 Python 표준 라이브러리 (별도 설치 불필요)
 openpyxl>=3.1.0  # xlsx_streaming.py 직접 XLSX 파싱 (task-109)
+pdfplumber>=0.11.0,<0.13.0  # pdf parser (task-125 R-3)

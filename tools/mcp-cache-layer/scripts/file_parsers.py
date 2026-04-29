@@ -65,7 +65,10 @@ def parse_file(file_path: str, *, extract_images: bool = True,
         return parse_pptx(file_path, extract_images=extract_images,
                           image_base_dir=image_base_dir)
     elif ext in (".xlsx", ".xlsm"):
-        return parse_xlsx(file_path)
+        return parse_xlsx(file_path, extract_images=extract_images,
+                          image_base_dir=image_base_dir)
+    elif ext == ".pdf":
+        return parse_pdf(file_path)
     elif ext == ".tsv":
         return parse_tsv(file_path)
     elif ext in (".docx",):
@@ -347,7 +350,8 @@ def _extract_group_text(group_shape) -> str:
 # XLSX 파서
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def parse_xlsx(file_path: str) -> dict:
+def parse_xlsx(file_path: str, *, extract_images: bool = True,
+               image_base_dir: Optional[str] = None) -> dict:
     """XLSX 파일을 시트별 마크다운 테이블로 변환한다.
 
     핵심 처리:
@@ -356,31 +360,68 @@ def parse_xlsx(file_path: str) -> dict:
     - Summary/Report 시트: key-value 형태로 파싱
     - 헤더 감지: 'ID', '번호', '분류' 등 키워드 기반 + 고유값 비율 판별
     - 빈 스페이서 열/행 자동 제거
+    - R-1 (task-125): xlsx 이미지 proxy 마커 추출 (extract_images=True 시 디스크 저장)
+    - R-2 (task-125): 수식 원문 보존 (data_only=False 보조 로드로 formula_map 추출)
+
+    Args:
+        file_path: xlsx 파일 경로
+        extract_images: True이면 이미지를 디스크에 저장 (기본값). False이면 마커만 본문에 포함.
+        image_base_dir: 이미지 저장 기본 경로 (None이면 파일 옆 _images/)
     """
     import openpyxl
 
     wb = openpyxl.load_workbook(file_path, data_only=True)
     file_name = Path(file_path).name
     parts = []
+    images: list[dict] = []       # R-1 (task-125): 이미지 info 누적
+    total_images = 0               # R-1 (task-125): 이미지 수 집계
     total_rows = 0
+
+    # R-1 (task-125): 이미지 저장 디렉터리 결정
+    if extract_images:
+        if image_base_dir:
+            img_dir = Path(image_base_dir) / IMAGE_DIR_NAME / _safe_filename(Path(file_path).stem)
+        else:
+            img_dir = Path(file_path).parent / IMAGE_DIR_NAME / _safe_filename(Path(file_path).stem)
+    else:
+        img_dir = None
+
+    # R-2 (task-125): formula map 1회 추출 (read_only 보조 로드 — 옵션 D)
+    formula_map_all = _load_xlsx_formula_map(file_path)
 
     for sname in wb.sheetnames:
         ws = wb[sname]
+
+        # ── R-1 (task-125): 이미지 처리 — C-3 시정: summary/non-summary 모두 처리 ──
+        # continue 이전에 실행하여 Summary 시트 이미지 누락 방지
+        marker_lines, img_count = _extract_xlsx_image_section(
+            ws, sname, img_dir, extract_images, images, total_images
+        )
+        total_images += img_count
 
         # Summary/Report 시트 → 워크시트에서 직접 key-value 파싱
         if _is_summary_sheet_ws(sname, ws):
             summary_md = _parse_summary_sheet_ws(sname, ws)
             if summary_md:
                 parts.append(summary_md)
+            # Summary 시트의 이미지 marker도 본문에 추가
+            if marker_lines:
+                parts.extend(marker_lines)
             continue
 
         # 수평 병합 범위 수집 (중복 열 제거용)
         h_merges = _collect_horizontal_merges(ws)
 
+        # R-2 (task-125): formula_map 시트별 추출
+        sheet_formula_map = formula_map_all.get(sname)
+
         # 원본 셀 값 읽기 (병합 해제 안 함 → 수평 중복 방지)
-        raw_rows, use_cols = _read_sheet_raw(ws, h_merges)
+        raw_rows, use_cols = _read_sheet_raw(ws, h_merges, sheet_formula_map)
 
         if not raw_rows:
+            # non-summary 시트에도 이미지 marker 추가 (데이터 없어도)
+            if marker_lines:
+                parts.extend(marker_lines)
             continue
 
         # 빈 열 제거 (전체가 빈 열)
@@ -391,6 +432,8 @@ def parse_xlsx(file_path: str) -> dict:
                 non_empty_cols.append(c)
 
         if not non_empty_cols:
+            if marker_lines:
+                parts.extend(marker_lines)
             continue
 
         # 컬럼 영역 분리 (원본 워크시트 열 기준 3열 이상 갭이면 별도 테이블)
@@ -472,6 +515,10 @@ def parse_xlsx(file_path: str) -> dict:
                         "| " + " | ".join(_sanitize_cells(row[:len(headers)])) + " |"
                     )
 
+        # R-1 (task-125): non-summary 시트 끝에 이미지 marker 추가
+        if marker_lines:
+            parts.extend(marker_lines)
+
         parts.append("")
 
     body_text = "\n".join(parts)
@@ -486,8 +533,9 @@ def parse_xlsx(file_path: str) -> dict:
             "sheet_names": wb.sheetnames,
             "total_sheets": len(wb.sheetnames),
             "total_data_rows": total_rows,
+            "total_images": total_images,  # R-1 (task-125): 신규
         },
-        "images": [],
+        "images": images,              # R-1 (task-125): [] → list[info]
         "source_type": "generic_xlsx",
     }
 
@@ -525,7 +573,7 @@ def _build_vertical_merge_map(ws) -> dict:
     return v_merge_map
 
 
-def _read_sheet_raw(ws, h_merges: dict) -> tuple[list[list[str]], list[int]]:
+def _read_sheet_raw(ws, h_merges: dict, formula_map: Optional[dict] = None) -> tuple[list[list[str]], list[int]]:
     """시트의 원본 셀 값을 읽되, 수평 병합 셀은 건너뛴다.
 
     수직 병합은 첫 셀 값을 유지 (fill-down은 나중에 처리).
@@ -571,6 +619,10 @@ def _read_sheet_raw(ws, h_merges: dict) -> tuple[list[list[str]], list[int]]:
                 val = str(val).strip()
                 if val == "\u3000":
                     val = ""
+            # R-2 (task-125): \uc218\uc2dd augment \u2014 formula_map \uc870\ud68c
+            if formula_map is not None:
+                formula = formula_map.get((actual_r, actual_c))
+                val = _format_cell_value_with_formula(val, formula)
             row_vals.append(val)
         raw_rows.append(row_vals)
 
@@ -897,12 +949,373 @@ def _sanitize_cells(cells: list[str]) -> list[str]:
     result = []
     for v in cells:
         v = v.replace("|", "\\|").replace("\n", " ").replace("\r", "")
-        if len(v) > MAX_COL_WIDTH:
-            v = v[:MAX_COL_WIDTH] + "…"
+        # MINOR-4 (task-125): 수식 augment 셀은 절단 임계값 동적 확장
+        # 형태: "<eval> [=...]" → 끝이 "]"이고 " [=" 패턴 포함
+        is_formula_augmented = v.endswith("]") and " [=" in v
+        max_w = MAX_COL_WIDTH if not is_formula_augmented else max(MAX_COL_WIDTH, len(v))
+        if len(v) > max_w:
+            v = v[:max_w] + "…"
         if not v:
             v = " "  # 빈 셀은 공백으로 (테이블 깨짐 방지)
         result.append(v)
     return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# XLSX 이미지/수식 helper (task-125 R-1, R-2)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _extract_xlsx_image(
+    image_obj,
+    sheet_name: str,
+    img_seq: int,
+    img_dir: Optional[Path],
+    save: bool,
+) -> Optional[dict]:
+    """xlsx 이미지에서 anchor + bytes를 추출하고 선택적으로 디스크에 저장.
+
+    Args:
+        image_obj: openpyxl Image 객체
+        sheet_name: 시트명 (marker A1 표기용)
+        img_seq: 전체 이미지 시퀀스 번호 (1-based)
+        img_dir: 저장 디렉터리 (None이면 메모리만)
+        save: 디스크 저장 여부
+
+    Returns:
+        {filename, content_type, size_bytes, sheet, anchor_cell, anchor_row,
+         anchor_col, saved_path, format} 또는 실패 시 None
+    """
+    try:
+        from openpyxl.utils import get_column_letter
+
+        # MINOR-5 (task-125): AbsoluteAnchor fallback — hasattr 분기 필수
+        anchor = image_obj.anchor
+        if hasattr(anchor, '_from') and anchor._from is not None:
+            # TwoCellAnchor / OneCellAnchor
+            row_0 = anchor._from.row
+            col_0 = anchor._from.col
+            anchor_row = row_0 + 1     # 1-based
+            anchor_col = col_0 + 1     # 1-based
+            anchor_cell = f"{get_column_letter(anchor_col)}{anchor_row}"
+        else:
+            # AbsoluteAnchor (pos.x/pos.y는 EMU 좌표 — 셀 변환 불가)
+            anchor_row = None
+            anchor_col = None
+            anchor_cell = "?"
+            logger.debug(
+                "[file_parsers] xlsx anchor type=%s — anchor_cell='?' fallback",
+                type(anchor).__name__,
+            )
+
+        # blob 추출
+        data_attr = getattr(image_obj, '_data', None)
+        if callable(data_attr):
+            blob = data_attr()
+        else:
+            blob = data_attr or b""
+        if not blob:
+            logger.warning(
+                "[file_parsers] xlsx image blob 비어있음 sheet=%s seq=%d",
+                sheet_name, img_seq,
+            )
+            return None
+
+        # format + filename
+        ext = (getattr(image_obj, 'format', None) or 'png').lower()
+        safe_sheet = _safe_filename(sheet_name)
+        filename = f"{safe_sheet}_img{img_seq:03d}.{ext}"
+        content_type = f"image/{'jpeg' if ext == 'jpg' else ext}"
+
+        # save (옵션)
+        saved_path = None
+        if save and img_dir:
+            try:
+                img_dir.mkdir(parents=True, exist_ok=True)
+                save_path = img_dir / filename
+                save_path.write_bytes(blob)
+                saved_path = str(save_path)
+            except Exception as e:
+                logger.warning(
+                    "[file_parsers] xlsx image 저장 실패 sheet=%s: %s",
+                    sheet_name, e,
+                )
+
+        return {
+            "filename": filename,
+            "content_type": content_type,
+            "size_bytes": len(blob),
+            "sheet": sheet_name,
+            "anchor_cell": anchor_cell,
+            "anchor_row": anchor_row,
+            "anchor_col": anchor_col,
+            "saved_path": saved_path,
+            "format": ext,
+        }
+    except Exception as e:
+        logger.warning(
+            "[file_parsers] xlsx image 추출 실패 sheet=%s seq=%d: %s",
+            sheet_name, img_seq, e,
+        )
+        return None
+
+
+def _extract_xlsx_image_section(
+    ws,
+    sheet_name: str,
+    img_dir: Optional[Path],
+    save: bool,
+    images_accumulator: list,
+    total_images_offset: int,
+) -> tuple:
+    """시트의 모든 이미지를 추출하고 marker 라인 + OCR 텍스트를 반환.
+
+    C-3 시정 (task-125): summary/non-summary 두 경로 모두 호출되도록 분리.
+
+    Args:
+        ws: openpyxl worksheet
+        sheet_name: 시트명 (marker A1 표기용)
+        img_dir: 이미지 저장 디렉터리 (None이면 메모리만)
+        save: 디스크 저장 여부
+        images_accumulator: parse_xlsx의 images 리스트 (mutate)
+        total_images_offset: 누적 이미지 수 (img_seq 시작값)
+
+    Returns:
+        (marker_lines, count) — marker_lines는 body_text에 추가할 문자열 리스트,
+        count는 처리한 이미지 수.
+    """
+    if not hasattr(ws, "_images") or not ws._images:
+        return [], 0
+
+    marker_lines: list[str] = []
+    count = 0
+    for local_seq, image_obj in enumerate(ws._images, 1):
+        img_seq = total_images_offset + local_seq
+        info = _extract_xlsx_image(image_obj, sheet_name, img_seq, img_dir, save)
+        if info:
+            images_accumulator.append(info)
+            count += 1
+            size_kb = info["size_bytes"] // 1024
+            marker = (
+                f'[이미지: {sheet_name}!{info["anchor_cell"]}, '
+                f'{info["filename"]}, {size_kb}KB]'
+            )
+            marker_lines.append(marker)
+            # OCR 옵션 — 저장 경로가 있는 경우만
+            if info.get("saved_path"):
+                ocr_text = _ocr_image(info["saved_path"])
+                if ocr_text:
+                    marker_lines.append(ocr_text)
+    return marker_lines, count
+
+
+def _load_xlsx_formula_map(file_path: str) -> dict:
+    """수식 셀 좌표 → 원문 매핑을 read_only 모드로 빠르게 추출.
+
+    R-2 / 옵션 D (task-125): 메인 data_only=True wb는 그대로 두고,
+    보조 read_only=False wb로 수식 원문만 수집. 처리시간 추가 ~1초 (47MB 기준).
+
+    Returns:
+        {sheet_name: {(row_1based, col_1based): "=SUM(A1:A10)", ...}}
+        실패 시 빈 dict (graceful degradation — 평가값만 보존).
+    """
+    import openpyxl
+    formula_map: dict = {}
+    try:
+        wb_r = openpyxl.load_workbook(file_path, data_only=False, read_only=True)
+        for sname in wb_r.sheetnames:
+            ws_r = wb_r[sname]
+            sheet_map: dict = {}
+            for row in ws_r.iter_rows():
+                for cell in row:
+                    # data_type='f' = formula cell
+                    if cell.data_type == 'f' and isinstance(cell.value, str):
+                        sheet_map[(cell.row, cell.column)] = cell.value
+            if sheet_map:
+                formula_map[sname] = sheet_map
+        wb_r.close()
+    except Exception as e:
+        logger.warning(
+            "[file_parsers] xlsx formula map 추출 실패: %s — 평가값만 보존", e,
+        )
+    return formula_map
+
+
+def _format_cell_value_with_formula(
+    val: str,
+    formula: Optional[str],
+) -> str:
+    """평가값에 수식 원문을 부착 (있으면).
+
+    R-2 / M-4 (task-125): step2 포맷 채택 — 'value [=FORMULA]'
+    평가값 우선, 수식 괄호 부착. 검색 토큰 노출 + 가독성 균형.
+
+    Args:
+        val: 평가값 (data_only=True 결과, 이미 str+strip)
+        formula: formula_map.get((r, c)) 결과 (None이면 일반 셀)
+
+    Returns:
+        formula 있으면 'val [=FORMULA]', 없으면 val 그대로.
+    """
+    if not formula:
+        return val
+    if not val:
+        # 평가값 없는 수식 셀 (희소) — 수식만 표시
+        return formula
+    # 검색 토큰 노출 + 가독성 균형 — 평가값 우선, 수식은 괄호 부착
+    return f"{val} [{formula}]"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PDF 파서 (task-125 R-3)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def parse_pdf(file_path: str) -> dict:
+    """PDF 파일을 페이지별 마크다운 텍스트 + 표로 변환한다.
+
+    1차 범위:
+      - 페이지별 텍스트 추출 (## Page N 헤더)
+      - 표 추출 → 마크다운 테이블 (pdfplumber.extract_tables)
+    제외 (후속 task escalate):
+      - OCR (스캔 PDF) — is_scanned_likely=True 로그만
+      - 이미지 추출
+      - 수식 (LaTeX)
+
+    Returns:
+        {
+            "body_text": str,
+            "metadata": {
+                "file_path": str,
+                "file_name": str,
+                "total_pages": int,
+                "total_tables": int,
+                "is_scanned_likely": bool,
+            },
+            "images": [],
+            "source_type": "generic_pdf",
+        }
+    """
+    try:
+        import pdfplumber
+    except ImportError:
+        logger.warning(
+            "[file_parsers] pdfplumber 미설치 — PDF 파싱 불가 (%s)", file_path,
+        )
+        return {
+            "body_text": "[pdfplumber 미설치 — PDF 파싱 불가]",
+            "metadata": {"file_path": file_path},
+            "images": [],
+            "source_type": "generic_pdf",
+        }
+
+    file_name = Path(file_path).name
+    parts = []
+    total_pages = 0
+    total_tables = 0
+    text_total_chars = 0
+
+    try:
+        with pdfplumber.open(file_path) as pdf:
+            total_pages = len(pdf.pages)
+            for page_idx, page in enumerate(pdf.pages, 1):
+                page_parts = [f"## Page {page_idx}"]
+                try:
+                    page_text = page.extract_text() or ""
+                except Exception as e:
+                    logger.debug("page %d text extract 실패: %s", page_idx, e)
+                    page_text = ""
+                page_text = page_text.strip()
+                if page_text:
+                    page_parts.append(page_text)
+                    text_total_chars += len(page_text)
+                try:
+                    tables = page.extract_tables() or []
+                except Exception as e:
+                    logger.debug("page %d tables extract 실패: %s", page_idx, e)
+                    tables = []
+                for table in tables:
+                    md = _pdf_table_to_markdown(table)
+                    if md:
+                        page_parts.append(md)
+                        total_tables += 1
+                if len(page_parts) > 1:
+                    parts.append("\n".join(page_parts))
+    except Exception as e:
+        logger.error("[file_parsers] pdfplumber open 실패 (%s): %s", file_path, e)
+        return {
+            "body_text": "",
+            "metadata": {
+                "file_path": file_path,
+                "file_name": file_name,
+                "error": f"{type(e).__name__}: {e}",
+            },
+            "images": [],
+            "source_type": "generic_pdf",
+        }
+
+    body_text = "\n\n".join(parts)
+    if len(body_text) > MAX_BODY_CHARS:
+        body_text = body_text[:MAX_BODY_CHARS] + "\n\n_(본문 잘림)_"
+
+    is_scanned_likely = (total_pages > 0 and text_total_chars < total_pages * 10)
+    if is_scanned_likely and total_pages > 0:
+        logger.warning(
+            "[file_parsers] PDF likely scanned (no extractable text): "
+            "%s (pages=%d, total_chars=%d)",
+            file_path, total_pages, text_total_chars,
+        )
+
+    return {
+        "body_text": body_text,
+        "metadata": {
+            "file_path": file_path,
+            "file_name": file_name,
+            "total_pages": total_pages,
+            "total_tables": total_tables,
+            "is_scanned_likely": is_scanned_likely,
+        },
+        "images": [],
+        "source_type": "generic_pdf",
+    }
+
+
+def _pdf_table_to_markdown(table: list) -> str:
+    """pdfplumber 테이블 (list of rows) → 마크다운 테이블.
+
+    Args:
+        table: list[list[Optional[str]]] — pdfplumber extract_tables() 결과
+
+    Returns:
+        마크다운 테이블 문자열. 빈 표이면 '' 반환.
+    """
+    if not table or not table[0]:
+        return ""
+    sanitized = []
+    for row in table:
+        cells = []
+        for v in row:
+            v = "" if v is None else str(v).strip()
+            v = v.replace("|", "\\|").replace("\n", " ")
+            if len(v) > MAX_COL_WIDTH:
+                v = v[:MAX_COL_WIDTH] + "…"
+            if not v:
+                v = " "
+            cells.append(v)
+        sanitized.append(cells)
+
+    # 모두 빈 경우
+    if not any(any(c.strip() for c in r) for r in sanitized):
+        return ""
+
+    n_cols = len(sanitized[0])
+    out = ["| " + " | ".join(sanitized[0]) + " |",
+           "|" + "|".join("---" for _ in sanitized[0]) + "|"]
+    for row in sanitized[1:]:
+        # 열 수 정규화
+        while len(row) < n_cols:
+            row.append(" ")
+        row = row[:n_cols]
+        out.append("| " + " | ".join(row) + " |")
+    return "\n".join(out)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

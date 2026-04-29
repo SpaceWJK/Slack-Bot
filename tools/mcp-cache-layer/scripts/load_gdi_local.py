@@ -42,8 +42,10 @@ DB_PATH = str(PROJECT_ROOT / "cache" / "mcp_cache.db")
 GDI_REPO = PROJECT_ROOT / "gdi-repo"
 
 # 지원 확장자 → 파서 매핑
+# M-2 (task-125): parse_xlsx 시그니처 변경(extract_images 추가) 후
+# 이미지 디스크 저장 없이 마커만 body에 포함하도록 wrapper 적용
 PARSERS = {
-    ".xlsx": parse_xlsx,
+    ".xlsx": lambda p: parse_xlsx(p, extract_images=False),
     ".tsv": parse_tsv,
     ".pptx": parse_pptx,
     ".docx": parse_docx,
