@@ -23,10 +23,12 @@ doc_chunks + chunks_fts FTS5 contentless 테이블에 저장한다.
 
 import argparse
 import logging
+import re
 import sqlite3
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 from typing import Iterator
 
 # 프로젝트 루트를 sys.path에 추가
@@ -52,84 +54,352 @@ BATCH_SIZE       = 200   # nodes per commit
 CHECKPOINT_EVERY = 1000  # PASSIVE checkpoint 주기 (nodes 단위)
 
 
-# ── 청킹 로직 ─────────────────────────────────────────────────────────────
+# ── 마커 정규식 (task-125 정합 — coverage_comparator.py와 동일) ─────────────
+# HIGH-1/HIGH-2 ReDoS 가드 (task-125 Step 7): {1,500} 길이 제한
+_FORMULA_BLOCK_RE = re.compile(r"\[=([^\]\n]{1,500})\]")
+_IMAGE_MARKER_RE  = re.compile(r"\[이미지[^\]\n]{1,500}\]")
 
-def build_chunks(body_text: str) -> list[dict]:
-    """body_text를 CHUNK_SIZE/OVERLAP 기반 슬라이딩 윈도우로 분할.
+# 시트/슬라이드 경계 패턴
+_SHEET_HEADER_RE = re.compile(r"^##\s+Sheet:\s+(.+)$", re.MULTILINE)
+_SLIDE_HEADER_RE = re.compile(r"^##\s+Slide\s+(\d+)\s*$", re.MULTILINE)
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 마커 atomic 가드 helper (task-124 §4)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _is_inside_marker(text: str, pos: int) -> tuple:
+    """pos가 마커 내부인지 확인. inside=True면 (True, start, end) 반환.
+
+    탐색 범위: pos를 중심으로 좌/우 ≤500자 (마커 길이 상한).
+    MINOR-1 시정: 우측 탐색을 pos+501로 보강 — 마커 끝이 정확히 500자 떨어진 경계 케이스 포착.
+    """
+    left_window = max(0, pos - 500)
+    # MINOR-1 시정: pos+502 — [= + 500자 내용 + ] = 503자 마커에서 ] 포함 보장
+    # 설계 §4.2 "pos+501" 대비 +1 추가: [=...{499자}] 형태 마커는 502자이므로
+    # pos=0 기준 snippet[0:502]가 필요. {1,500} 패턴 최대 길이(500자 내용)+2(괄호)=502자
+    snippet = text[left_window:pos + 502]
+    for pat in (_FORMULA_BLOCK_RE, _IMAGE_MARKER_RE):
+        for m in pat.finditer(snippet):
+            abs_start = left_window + m.start()
+            abs_end = left_window + m.end()
+            if abs_start <= pos < abs_end:
+                return True, abs_start, abs_end
+    return False, -1, -1
+
+
+def _marker_safe_split_position(text: str, candidate_pos: int, chunk_start_offset: int) -> int:
+    """candidate_pos가 마커 내부면 마커 직전(보장 안전) 또는 직후로 이동.
+
+    C-1 시정: chunk_start_offset 매개변수 명시. _safe_sliding_window가 chunk 시작점을 추적하여 전달.
+
+    선택 규칙:
+      - m_start - chunk_start_offset >= MIN_CHARS면 직전 선택 (chunk가 50자 이상 확보됨)
+      - 그렇지 않으면 직후 선택 (chunk 길이 일시 초과 허용 — 최대 CHUNK_SIZE+500 = 1,300자)
+    """
+    inside, m_start, m_end = _is_inside_marker(text, candidate_pos)
+    if not inside:
+        return candidate_pos
+    return m_start if (m_start - chunk_start_offset) >= MIN_CHARS else m_end
+
+
+def _safe_sliding_window(text: str, chunk_start_base: int = 0) -> list:
+    """CHUNK_SIZE/OVERLAP 슬라이딩 윈도우 분할 + 마커 atomic 가드.
+
+    M-2 시정: 시그니처 명시.
+    chunk_start_base: 호출자가 추적하는 절대 offset (현 함수는 text 내부 상대 좌표만 추적).
     알고리즘:
-    1. \\n\\n으로 섹션 분리
-    2. 섹션들을 CHUNK_SIZE 이하로 그룹핑 (섹션 경계 우선)
-    3. 그룹이 CHUNK_SIZE 초과 시 슬라이딩 윈도우 적용
-    4. 각 청크에 이전 청크 마지막 OVERLAP자 접두 (seq>=1)
-    5. MIN_CHARS 미만 버림
+      1. start=0부터 CHUNK_SIZE 단위로 진행
+      2. 매 chunk boundary 후보 end = start + CHUNK_SIZE
+      3. _marker_safe_split_position(text, end, chunk_start_offset=start)로 보정
+      4. text[start:safe_end] 추출, OVERLAP 100자 적용 (다음 chunk 시작 = safe_end - OVERLAP)
+    """
+    chunks: list = []
+    start = 0
+    total = len(text)
+    while start < total:
+        end = min(start + CHUNK_SIZE, total)
+        if end < total:
+            # 마커 atomic 가드 — chunk_start_offset=start로 직전/직후 판단
+            safe_end = _marker_safe_split_position(text, end, chunk_start_offset=start)
+        else:
+            safe_end = end
+        chunks.append(text[start:safe_end])
+        if safe_end >= total:
+            break
+        # 다음 시작점: OVERLAP 만큼 뒤로 (단 역행 방지 가드)
+        start = max(safe_end - OVERLAP, start + 1)
+    return chunks
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 표 블록 helper (task-124 §5)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _is_table_header_line(line: str) -> bool:
+    """헤더 라인 인식.
+
+    MINOR-3: count("|") >= 2 완화 (1컬럼 표 `| col |` 인식).
+    separator 조건과 결합하여 `||` 연속 오탐 방지.
+    """
+    s = line.strip()
+    return s.startswith("|") and s.endswith("|") and s.count("|") >= 2 and "---" not in s
+
+
+def _is_table_separator_line(line: str) -> bool:
+    """구분자 라인 인식."""
+    s = line.strip()
+    return s.startswith("|") and s.endswith("|") and "---" in s
+
+
+def _is_table_data_line(line: str) -> bool:
+    """데이터 행 인식.
+
+    M-5 시정: separator 라인과 구분 위해 '---' 포함 라인 제외.
+    """
+    s = line.strip()
+    return s.startswith("|") and s.endswith("|") and s.count("|") >= 2 and "---" not in s
+
+
+def _split_into_blocks(segment: str) -> list:
+    """segment를 (block_type, block_text) 블록으로 분리.
+
+    표 시작 인식: _is_table_header_line(line[i]) AND _is_table_separator_line(line[i+1])
+    데이터 행 수집: _is_table_data_line (M-5 시정으로 separator 라인 자동 제외 → 연속 표 분리 정확)
+    """
+    lines = segment.split("\n")
+    blocks: list = []
+    current_text_lines: list = []
+    i = 0
+    n = len(lines)
+    while i < n:
+        line = lines[i]
+        if _is_table_header_line(line) and i + 1 < n and _is_table_separator_line(lines[i + 1]):
+            if current_text_lines:
+                text_block = "\n".join(current_text_lines).strip()
+                if text_block:
+                    blocks.append(("text", text_block))
+                current_text_lines = []
+            table_lines = [line, lines[i + 1]]
+            j = i + 2
+            while j < n and _is_table_data_line(lines[j]):
+                table_lines.append(lines[j])
+                j += 1
+            blocks.append(("table", "\n".join(table_lines)))
+            i = j
+        else:
+            current_text_lines.append(line)
+            i += 1
+    if current_text_lines:
+        text_block = "\n".join(current_text_lines).strip()
+        if text_block:
+            blocks.append(("text", text_block))
+    return blocks
+
+
+def _split_table_block(table_block: str) -> list:
+    """표 블록을 헤더 보존 분할.
+
+    C-4 시정: 반환 타입 list[(chunk_text, origin)] — 단일 행이 CHUNK_SIZE 초과 시 origin="sliding".
+    MINOR-4 시정: 단일 행 CHUNK_SIZE 초과 조건은 row_len > CHUNK_SIZE (헤더 무관 단독 행 길이).
+    """
+    lines = table_block.split("\n")
+    if len(lines) < 3:
+        # 헤더만 있는 표 (데이터 없음)
+        return [(table_block, "table")]
+
+    header = "\n".join(lines[:2])    # 헤더 + 구분자
+    header_len = len(header) + 1     # +1 for \n
+
+    chunks: list = []
+    current_rows: list = []
+    current_len = header_len
+
+    for row in lines[2:]:
+        row_len = len(row) + 1   # +1 for \n
+
+        # MINOR-4 시정: 단일 행이 CHUNK_SIZE 초과 — 희귀 케이스
+        if row_len > CHUNK_SIZE:
+            if current_rows:
+                chunks.append((header + "\n" + "\n".join(current_rows), "table"))
+                current_rows = []
+                current_len = header_len
+            # 단일 행 슬라이딩 분할 — origin="sliding"
+            for sw in _safe_sliding_window(header + "\n" + row):
+                chunks.append((sw, "sliding"))
+            continue
+
+        if current_len + row_len > CHUNK_SIZE and current_rows:
+            chunks.append((header + "\n" + "\n".join(current_rows), "table"))
+            current_rows = [row]
+            current_len = header_len + row_len
+        else:
+            current_rows.append(row)
+            current_len += row_len
+
+    if current_rows:
+        chunks.append((header + "\n" + "\n".join(current_rows), "table"))
+
+    return chunks
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 시트 경계 인식 helper (task-124 §6)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _split_by_sheet_boundary(body_text: str) -> list:
+    """xlsx/pptx 시트 경계 분리.
+
+    M-7 시정: 첫 시트 헤더 이전 선행 텍스트(boundaries[0][0] > 0)를 별도 segment로 보존.
+              section_path=None, build_chunks의 sheet_name=None 경로로 "preamble" origin 부여.
+    """
+    boundaries: list = []
+    for m in _SHEET_HEADER_RE.finditer(body_text):
+        boundaries.append((m.start(), f"Sheet:{m.group(1).strip()}"))
+    for m in _SLIDE_HEADER_RE.finditer(body_text):
+        boundaries.append((m.start(), f"Slide {m.group(1).strip()}"))
+    boundaries.sort()
+
+    if not boundaries:
+        return [(None, body_text)]
+
+    segments: list = []
+
+    # M-7 시정: 첫 시트 이전 선행 텍스트 segment로 보존 (origin="preamble")
+    if boundaries[0][0] > 0:
+        preamble = body_text[:boundaries[0][0]].strip()
+        if preamble:
+            segments.append((None, preamble))
+
+    for i, (pos, name) in enumerate(boundaries):
+        end = boundaries[i + 1][0] if i + 1 < len(boundaries) else len(body_text)
+        segments.append((name, body_text[pos:end]))
+    return segments
+
+
+def _merge_small_segments(segments, threshold: int = 400) -> list:
+    """작은 시트는 인접 시트와 묶음. section_path는 첫 시트명 유지.
+
+    M-6 시정:
+      - else 분기에서 buf_name, buf_text = name, text 라인 추가 (첫 세그먼트가 threshold 초과해도 보존)
+      - 비교 조건에 \\n\\n 2자 포함: len(buf_text) + 2 + len(text) <= threshold
+    """
+    merged: list = []
+    buf_name = None
+    buf_text = ""
+    for name, text in segments:
+        # M-6 시정: \n\n 2자 포함 비교
+        joined_len = len(buf_text) + (2 if buf_text else 0) + len(text)
+        if joined_len <= threshold:
+            buf_name = buf_name or name
+            buf_text = buf_text + "\n\n" + text if buf_text else text
+        else:
+            if buf_text:
+                merged.append((buf_name, buf_text))
+            # M-6 시정: 현재 세그먼트를 새 buf에 적재 (else 분기 누락 시정)
+            buf_name, buf_text = name, text
+    if buf_text:
+        merged.append((buf_name, buf_text))
+    return merged
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 청킹 로직 (task-124 §3 A1 Semantic Chunking — 기존 슬라이딩 윈도우 대체)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def build_chunks(body_text: str) -> list:
+    """body_text를 의미 단위 우선 분할 (A1 Semantic Chunking — task-124).
+
+    우선순위:
+      L1: 시트/슬라이드 경계 (M-7 선행 텍스트 보존 포함)
+      L2: 표 블록 (헤더+구분자+데이터 rows)
+      L3a: 표 헤더 반복 분할 (표 블록 > CHUNK_SIZE 시)
+      L3b: 단락(\\n\\n) 그룹화
+      L4: 슬라이딩 윈도우 fallback (단락 > CHUNK_SIZE 시) — 마커 atomic 가드 포함
 
     Returns:
-        list of dict: {seq, text, section_path, char_count}
+        list of dict: {seq, text, section_path, char_count, chunk_origin}
     """
     if not body_text:
         return []
 
-    # 섹션 분리 (\\n\\n 또는 탭 행)
-    raw_sections = _split_sections(body_text)
+    # ── L1: 시트/슬라이드 경계 인식 (M-7 선행 텍스트 보존 포함) ─────────────
+    sheet_segments = _split_by_sheet_boundary(body_text)
 
-    # 섹션을 CHUNK_SIZE 이하로 그룹핑하여 청크 텍스트 목록 생성
-    raw_chunks = _group_sections(raw_sections)
+    # MAJOR-NEW-1 시정: preamble(name=None) segment는 병합 대상에서 분리.
+    # _merge_small_segments는 name이 동일하지 않은 segment 병합 시 첫 name 채택 →
+    # preamble이 첫 시트와 병합되면 chunk_origin="preamble" 소실 위험.
+    preamble_segs = [(n, t) for n, t in sheet_segments if n is None]
+    named_segs = [(n, t) for n, t in sheet_segments if n is not None]
+    named_segs = _merge_small_segments(named_segs, threshold=CHUNK_SIZE // 2)
+    sheet_segments = preamble_segs + named_segs
 
-    # OVERLAP 적용 + 슬라이딩 윈도우
-    result = []
+    result: list = []
     seq = 0
-    prev_tail = ""  # 이전 청크의 마지막 OVERLAP자
 
-    for raw_text in raw_chunks:
-        # OVERLAP 접두 적용 (seq >= 1부터)
-        if prev_tail:
-            chunk_text = prev_tail + raw_text
-        else:
-            chunk_text = raw_text
+    for sheet_name, segment in sheet_segments:
+        # ── L2: 표 블록 인식 (segment 내부) ─────────────────────────────────
+        blocks = _split_into_blocks(segment)
 
-        # 이 청크가 CHUNK_SIZE 이하 → 단일 청크로 처리
-        if len(chunk_text) <= CHUNK_SIZE:
-            if len(chunk_text) >= MIN_CHARS:
-                result.append({
-                    "seq": seq,
-                    "text": chunk_text,
-                    "section_path": None,
-                    "char_count": len(chunk_text),
-                })
-                seq += 1
-            prev_tail = chunk_text[-OVERLAP:] if len(chunk_text) >= OVERLAP else chunk_text
-        else:
-            # 슬라이딩 윈도우 분할
-            sub_chunks = _sliding_window(chunk_text)
-            for sub in sub_chunks:
-                if len(sub) >= MIN_CHARS:
+        # C-4 시정: 슬라이딩 fallback chunk만 "sliding" 별도 부여
+        # M-1 시정: blocks_count(blocks) → len(blocks)
+        text_origin = (
+            "section" if len(blocks) > 1
+            else ("preamble" if sheet_name is None else "sheet")
+        )
+
+        # task-124 Step 6 root cause 시정 (STRUCTURE_LOSS 0% → 100% 폭증):
+        # _split_into_blocks가 "## Sheet: 시트명" 라인을 16자 짜리 text block으로 분리하면
+        # build_chunks의 MIN_CHARS=50 미달로 버려짐 → cache에 시트 헤더 0회 등장.
+        # 시정: 각 sheet_segment의 첫 chunk text 앞에 sheet header prepend (sheet_name 있을 때만).
+        first_chunk_in_segment = True
+
+        for block_type, block_text in blocks:
+            if block_type == "table":
+                # ── L3a: 표 헤더 반복 분할 (R-3) ─────────────────────────
+                # C-4 정합: _split_table_block이 list[(text, origin)] tuple 반환
+                block_chunks = _split_table_block(block_text)
+            else:
+                # ── L3b: 단락(\n\n) 그룹화 ───────────────────────────────
+                section_chunks = _group_sections(_split_sections(block_text))
+                block_chunks = []
+                for sec in section_chunks:
+                    if len(sec) <= CHUNK_SIZE:
+                        block_chunks.append((sec, text_origin))
+                    else:
+                        # ── L4: 슬라이딩 윈도우 fallback ─────────────────
+                        # C-4 시정: 슬라이딩 결과만 origin="sliding"
+                        for sw_chunk in _safe_sliding_window(sec):
+                            block_chunks.append((sw_chunk, "sliding"))
+
+            for chunk_text, origin in block_chunks:
+                if len(chunk_text) >= MIN_CHARS:
+                    # task-124 Step 6 시정: 첫 chunk에 sheet header prepend
+                    if first_chunk_in_segment and sheet_name:
+                        chunk_text_final = f"## {sheet_name}\n{chunk_text}"
+                        first_chunk_in_segment = False
+                    else:
+                        chunk_text_final = chunk_text
                     result.append({
                         "seq": seq,
-                        "text": sub,
-                        "section_path": None,
-                        "char_count": len(sub),
+                        "text": chunk_text_final,
+                        "section_path": sheet_name,
+                        "char_count": len(chunk_text_final),
+                        "chunk_origin": origin,
                     })
                     seq += 1
-            if sub_chunks:
-                last = sub_chunks[-1]
-                prev_tail = last[-OVERLAP:] if len(last) >= OVERLAP else last
-            else:
-                prev_tail = ""
 
     return result
 
 
-def _split_sections(body_text: str) -> list[str]:
+def _split_sections(body_text: str) -> list:
     """\\n\\n 또는 탭 행 기준으로 섹션 분리."""
-    # 탭으로 시작하는 행을 섹션 구분자로 처리 (TSV 메타 구조 대응)
     lines = body_text.split("\n")
     sections = []
-    current_lines: list[str] = []
+    current_lines: list = []
 
     for line in lines:
         if line.startswith("\t") and current_lines:
-            # 탭 행 → 이전 섹션 마감 후 새 섹션 시작
             merged = "\n".join(current_lines).strip()
             if merged:
                 sections.append(merged)
@@ -142,7 +412,6 @@ def _split_sections(body_text: str) -> list[str]:
         if merged:
             sections.append(merged)
 
-    # \\n\\n 기준으로 추가 분리
     result = []
     for sec in sections:
         parts = [p.strip() for p in sec.split("\n\n") if p.strip()]
@@ -151,23 +420,21 @@ def _split_sections(body_text: str) -> list[str]:
     return result if result else [body_text]
 
 
-def _group_sections(sections: list[str]) -> list[str]:
+def _group_sections(sections: list) -> list:
     """섹션들을 CHUNK_SIZE 이하로 그룹핑."""
     groups = []
-    current_parts: list[str] = []
+    current_parts: list = []
     current_len = 0
 
     for sec in sections:
         sec_len = len(sec)
         if sec_len > CHUNK_SIZE:
-            # 섹션 자체가 CHUNK_SIZE 초과 → 현재 그룹 마감 후 단독 처리
             if current_parts:
                 groups.append("\n\n".join(current_parts))
                 current_parts = []
                 current_len = 0
             groups.append(sec)
         elif current_len + sec_len + 2 > CHUNK_SIZE and current_parts:
-            # 추가하면 CHUNK_SIZE 초과 → 현재 그룹 마감
             groups.append("\n\n".join(current_parts))
             current_parts = [sec]
             current_len = sec_len
@@ -181,8 +448,8 @@ def _group_sections(sections: list[str]) -> list[str]:
     return groups if groups else sections
 
 
-def _sliding_window(text: str) -> list[str]:
-    """CHUNK_SIZE/OVERLAP 슬라이딩 윈도우 분할."""
+def _sliding_window(text: str) -> list:
+    """기존 슬라이딩 윈도우 (마커 가드 없음 — 레거시, 내부 참조용)."""
     chunks = []
     start = 0
     total = len(text)
@@ -193,7 +460,6 @@ def _sliding_window(text: str) -> list[str]:
         chunks.append(chunk)
         if end >= total:
             break
-        # 다음 시작점: OVERLAP만큼 뒤로 (이전 청크 마지막 OVERLAP자가 다음 청크에 포함)
         start = end - OVERLAP
 
     return chunks
@@ -282,10 +548,11 @@ def insert_chunks(conn: sqlite3.Connection, node_id: int, title: str,
     inserted = 0
     for chunk in chunks:
         conn.execute(
-            "INSERT INTO doc_chunks(node_id, seq, text, section_path, char_count) "
-            "VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO doc_chunks(node_id, seq, text, section_path, char_count, chunk_origin) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
             (node_id, chunk["seq"], chunk["text"],
-             chunk["section_path"], chunk["char_count"]),
+             chunk["section_path"], chunk["char_count"],
+             chunk.get("chunk_origin", "legacy")),
         )
         chunk_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.execute(
@@ -342,9 +609,9 @@ def main():
     check_conn = get_connection(str(db_path))
     try:
         ver = check_conn.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] or 0
-        if ver < 6:
+        if ver < 11:
             log.error(
-                "schema v%d 감지 — v6 필요. "
+                "schema v%d 감지 — v11 필요. "
                 "먼저 python -m src.models 실행하여 migrate() 적용 후 재시도.",
                 ver,
             )

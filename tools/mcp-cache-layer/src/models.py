@@ -15,6 +15,14 @@ log = logging.getLogger("mcp_cache")
 # ── 마이그레이션 정의 ────────────────────────────────────────
 
 MIGRATIONS: dict[int, str] = {
+    11: """
+-- schema v11: doc_chunks.chunk_origin 컬럼 추가 (task-124 A1 Semantic Chunking)
+-- chunk_origin 5값: sheet / table / section / sliding / preamble / legacy(DEFAULT)
+-- IF NOT EXISTS 미사용: Python sqlite3 + SQLite ALTER syntax 호환 (v7/v10 패턴 동일).
+-- migrate()의 ver > current 조건이 멱등성 보장.
+ALTER TABLE doc_chunks ADD COLUMN chunk_origin TEXT NOT NULL DEFAULT 'legacy';
+INSERT OR IGNORE INTO schema_version (version) VALUES (11);
+""",
     10: """
 -- schema v10: nodes 데이터 계층 라벨링 메타데이터 (task-115 R-1)
 -- task-115 본질 = 축 1 (AI 맥락 이해 + 원본 보존 적재). 의미 폴더/게임 alias/파일 종류/날짜 메타.
