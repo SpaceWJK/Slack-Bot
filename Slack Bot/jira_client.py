@@ -1427,6 +1427,12 @@ def _issue_url(key: str) -> str:
     return f"{base}/browse/{key}"
 
 
+def _project_url(project_key: str) -> str:
+    """프로젝트 키로 Jira 프로젝트 웹 URL을 생성합니다."""
+    base = os.getenv("JIRA_BASE_URL", "https://jira.smilegate.net")
+    return f"{base}/projects/{project_key}/"
+
+
 # ── Claude AI 질의용 텍스트 추출 ──────────────────────────────────────────
 
 def get_issue_context_text(data) -> str:

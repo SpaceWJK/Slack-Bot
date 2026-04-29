@@ -2302,7 +2302,9 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
                                 respond(text=f"{intent_summary}\n:information_source: *{target}* 프로젝트에서 관련 이슈를 찾을 수 없습니다.".strip())
                                 return
                             mirror_age = data.get("_mirror_age") if isinstance(data, dict) else None
+                            proj_url = jc._project_url(project_key)
                             _jira_ask_claude(context, target, question, respond,
+                                             source_url=proj_url,
                                              display_question=f"/jira {text}",
                                              prefix=intent_summary)
                             if mirror_age:
@@ -2336,7 +2338,9 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
 
                             context = jc.get_search_context_text(search_result.data)
                             mirror_age = search_result.data.get("_mirror_age") if isinstance(search_result.data, dict) else None
+                            proj_url = jc._project_url(project_key)
                             _jira_ask_claude(context, target, question, respond,
+                                             source_url=proj_url,
                                              display_question=f"/jira {text}",
                                              prefix=intent_summary)
                             if mirror_age:
