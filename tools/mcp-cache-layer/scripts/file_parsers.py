@@ -36,6 +36,9 @@ MAX_TABLE_ROWS = 20000      # 마크다운 테이블 최대 행 수
 MAX_BODY_CHARS = 500_000    # body_text 최대 글자 수
 MAX_COL_WIDTH = 80          # 셀 값 최대 표시 길이 (넘으면 잘라냄)
 MAX_PRE_HEADER_CELLS_PER_ROW = 50  # task-127 S4-3: pre_header 행당 셀 최대 출력 수 (폭증 방지)
+# task-127 v3 시정 2: multi-line 셀 끝에 issue ID 패턴이 있으면 절단 시 보존
+# (#162733/#164993/#167702 같은 형식. 4자리 이상 숫자 — false positive 회피)
+_TRAILING_ID_RE = re.compile(r"#\d{4,}\b")
 IMAGE_DIR_NAME = "_images"  # 이미지 추출 저장 폴더명
 _tesseract_available: "bool | None" = None  # None=미확인, True=가용, False=불가
 
@@ -213,7 +216,10 @@ def _extract_text_frame(text_frame) -> str:
 
 
 def _extract_table(table) -> str:
-    """PPTX 테이블을 마크다운 테이블로 변환한다."""
+    """PPTX 테이블을 마크다운 테이블로 변환한다.
+
+    task-127 v3 시정 3b: cell text 절단 시 끝 ID 패턴 보존 (xlsx _sanitize_cells 정합).
+    """
     rows = []
     for r_idx in range(len(table.rows)):
         cells = []
@@ -221,7 +227,14 @@ def _extract_table(table) -> str:
             cell_text = table.cell(r_idx, c_idx).text.strip()
             cell_text = cell_text.replace("|", "\\|").replace("\n", " ")
             if len(cell_text) > MAX_COL_WIDTH:
-                cell_text = cell_text[:MAX_COL_WIDTH] + "…"
+                # task-127 v3 시정 3b: 끝부분 ID 패턴 보존
+                tail_ids = _TRAILING_ID_RE.findall(cell_text)
+                if tail_ids:
+                    tail_str = " " + " ".join(dict.fromkeys(tail_ids))
+                    head_w = max(0, MAX_COL_WIDTH - len(tail_str))
+                    cell_text = cell_text[:head_w] + "…" + tail_str
+                else:
+                    cell_text = cell_text[:MAX_COL_WIDTH] + "…"
             cells.append(cell_text)
         rows.append(cells)
 
@@ -333,17 +346,35 @@ def _extract_image(shape, slide_idx: int, img_seq: int,
 
 
 def _extract_group_text(group_shape) -> str:
-    """그룹 셰이프 내부의 텍스트를 재귀적으로 추출한다."""
+    """그룹 셰이프 내부의 텍스트 + 표 + 중첩 그룹을 재귀적으로 추출한다.
+
+    task-127 v3 시정 3a: GROUP 내 TABLE 처리 추가 (송윤선 pptx Slide 6/7/9 한글 셀 누락 시정).
+    """
     texts = []
     for shape in group_shape.shapes:
-        if shape.has_text_frame:
+        # text frame
+        if getattr(shape, "has_text_frame", False):
             t = _extract_text_frame(shape.text_frame)
             if t:
                 texts.append(t)
-        if hasattr(shape, 'shapes'):  # 중첩 그룹
-            t = _extract_group_text(shape)
-            if t:
-                texts.append(t)
+        # task-127 v3 시정 3a: GROUP 내 TABLE 처리 추가
+        if getattr(shape, "has_table", False):
+            md = _extract_table(shape.table)
+            if md:
+                texts.append(md)
+        # 중첩 그룹 (재귀 진입 — has_text_frame/has_table만 있는 일반 shape는 .shapes 미보유)
+        # MSO_SHAPE_TYPE.GROUP 직접 비교 대신 .shapes attribute 존재 + iterable 검증
+        inner_shapes = getattr(shape, "shapes", None)
+        if inner_shapes is not None and shape is not group_shape:
+            try:
+                # iterable 검증 (text_frame/table 같은 일반 shape의 .shapes는 mock 시 MagicMock 반환)
+                iter(inner_shapes)
+                # group이면 재귀, 일반 shape의 spurious .shapes면 빈 결과
+                t = _extract_group_text(shape)
+                if t:
+                    texts.append(t)
+            except TypeError:
+                pass
     return "\n".join(texts)
 
 
@@ -1013,7 +1044,11 @@ def _fill_down_categories(headers: list[str], rows: list[list[str]]) -> list[lis
 
 
 def _sanitize_cells(cells: list[str]) -> list[str]:
-    """셀 값을 마크다운 테이블에 안전하게 넣을 수 있도록 정리한다."""
+    """셀 값을 마크다운 테이블에 안전하게 넣을 수 있도록 정리한다.
+
+    task-127 v3 시정 2: 절단 시 끝부분 issue ID 패턴(#XXXXXX)이 있으면 보존.
+    multi-line 셀 ('... \\n#162733')이 MAX_COL_WIDTH 초과로 끝 ID 손실되던 문제 시정.
+    """
     result = []
     for v in cells:
         v = v.replace("|", "\\|").replace("\n", " ").replace("\r", "")
@@ -1022,7 +1057,15 @@ def _sanitize_cells(cells: list[str]) -> list[str]:
         is_formula_augmented = v.endswith("]") and " [=" in v
         max_w = MAX_COL_WIDTH if not is_formula_augmented else max(MAX_COL_WIDTH, len(v))
         if len(v) > max_w:
-            v = v[:max_w] + "…"
+            # task-127 v3 시정 2: 끝부분에 ID 패턴이 있으면 보존
+            tail_ids = _TRAILING_ID_RE.findall(v)
+            if tail_ids:
+                # set으로 중복 제거 후 끝에 부착 (검색 토큰 노출 우선)
+                tail_str = " " + " ".join(dict.fromkeys(tail_ids))  # 순서 보존 dedup
+                head_w = max(0, max_w - len(tail_str))
+                v = v[:head_w] + "…" + tail_str
+            else:
+                v = v[:max_w] + "…"
         if not v:
             v = " "  # 빈 셀은 공백으로 (테이블 깨짐 방지)
         result.append(v)
