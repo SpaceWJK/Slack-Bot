@@ -1,0 +1,95 @@
+{
+  "domain": "wiki",
+  "schema_version": 4,
+  "fields": {
+    "request_type": {
+      "type": "string",
+      "enum_values": ["metadata", "content_search", "list", "summary"],
+      "default": "content_search"
+    },
+    "metadata_field": {
+      "type": "string",
+      "enum_values": ["last_modified", "author", "space_key", "labels", null],
+      "default": null
+    },
+    "page_path_segments": {
+      "type": "array",
+      "items_type": "string",
+      "default": [],
+      "description": "사용자 입력의 '\\' 구분 결과. 예: '카제나 \\ TEST INFO' → ['카제나','TEST INFO']"
+    },
+    "title_keywords": {
+      "type": "array",
+      "items_type": "string",
+      "default": []
+    },
+    "ancestor_game": {
+      "type": "string",
+      "default": null
+    },
+    "date_field": {
+      "type": "string",
+      "enum_values": ["last_modified", "created", null],
+      "default": null
+    },
+    "date_from": {
+      "type": "string",
+      "format": "YYYY-MM-DD",
+      "default": null
+    },
+    "date_to": {
+      "type": "string",
+      "format": "YYYY-MM-DD",
+      "default": null
+    },
+    "body_keywords": {
+      "type": "array",
+      "items_type": "string",
+      "default": []
+    },
+    "space_key": {
+      "type": "string",
+      "default": null
+    },
+    "author": {
+      "type": "string",
+      "default": null
+    },
+    "labels": {
+      "type": "array",
+      "items_type": "string",
+      "default": []
+    },
+    "limit": {
+      "type": "integer",
+      "min": 1,
+      "max": 30,
+      "default": 10
+    },
+    "ambiguity_notes": {
+      "type": "string",
+      "default": ""
+    },
+    "ai_failed": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "extraction_rules": [
+    "─── request_type 분기 ───",
+    "1. '언제 업데이트/최근 수정/시점/날짜' → request_type='metadata', metadata_field='last_modified'",
+    "2. '~목록/리스트/전부' → request_type='list'",
+    "3. '~요약/정리' → request_type='summary'",
+    "4. 그 외 → request_type='content_search'",
+    "─── '\\\\' 구분자 처리 ───",
+    "5. 사용자 입력 '\\\\' split → page_path_segments 좌→우 narrowing",
+    "   예: '카제나 \\\\ TEST INFO' → page_path_segments=['카제나','TEST INFO']",
+    "6. page_path_segments[0]이 게임명이면 ancestor_game=해당값",
+    "7. title_keywords = page_path_segments 중 비-게임명 세그먼트",
+    "─── 날짜 표현 변환 ───",
+    "8. 상대 시간 → today 기준 절대 변환 (jira 1~7 정합)",
+    "9. ambiguity_notes는 추정한 가정 1줄"
+  ],
+  "strict": true,
+  "reject_unknown_fields": true
+}

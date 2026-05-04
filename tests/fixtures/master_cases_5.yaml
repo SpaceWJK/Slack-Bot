@@ -1,0 +1,94 @@
+# task-129 Master 사례 5건 (M-1~M-5) e2e 테스트 fixture
+# 설계 v4 §A.4 Master 사례 5건 v4 처리 흐름 재검증
+
+metadata:
+  created_at: "2026-04-29"
+  source: "step2_design_v4.md §A.4"
+
+cases:
+  - id: M-1
+    command: /wiki
+    text: "카제나 \\ TEST INFO 최근 업데이트 된 날짜?"
+    description: "metadata 경로 — page_path_segments 추출 + KST 변환 (MAJOR-NEW-6 + MAJOR-NEW-4)"
+    expected_intent:
+      request_type: metadata
+      metadata_field: last_modified
+      page_path_segments: ["카제나", "TEST INFO"]
+      ancestor_game: "카제나"
+      title_keywords: ["TEST INFO"]
+    expected_full_text_passed: "카제나 \\ TEST INFO 최근 업데이트 된 날짜?"
+    expected_answer_contains: ["업데이트", "날짜"]
+    expected_request_type: metadata
+    expected_sql_path: 2
+    critical_checks:
+      - "extract_intent에 전체 text 전달 (partition 이전) — MAJOR-NEW-6"
+      - "fallback 시 dataclasses.replace 사용 — MAJOR-NEW-4"
+      - "format_metadata_answer KST 변환"
+
+  - id: M-2
+    command: /gdi
+    text: "에픽세븐 캐릭터 \\ 신캐릭터 알려줘"
+    description: "gdi content_search 경로 (v3 정합)"
+    expected_intent:
+      request_type: content_search
+      path_segments: ["에픽세븐 캐릭터", "신캐릭터 알려줘"]
+      game_alias_kr: ["에픽세븐"]
+    expected_sql_path: 1
+    expected_results_min: 1
+    critical_checks:
+      - "chunks_fts FTS 경로"
+      - "game_alias_kr canonical 매칭"
+
+  - id: M-3
+    command: /wiki
+    text: "4월 27일부터 29일까지 업데이트된 페이지"
+    description: "list 경로 — date_to 경계값 _next_day 적용 (MAJOR-NEW-3 + MAJOR-NEW-5)"
+    expected_intent:
+      request_type: list
+      date_field: last_modified
+      date_from: "2026-04-27"
+      date_to: "2026-04-29"
+    expected_sql_path: 3
+    expected_sql_params_contains: ["2026-04-27", "2026-04-30"]
+    expected_need_doc_meta_join: true
+    expected_order_by: "dm.last_modified DESC NULLS LAST, n.title ASC"
+    critical_checks:
+      - "_next_day('2026-04-29') = '2026-04-30' — MAJOR-NEW-5"
+      - "need_doc_meta_join=True 강제 — MAJOR-NEW-3"
+      - "dm.last_modified ORDER BY (JOIN 있을 때만) — MAJOR-NEW-3"
+      - "date_to exclusive upper bound"
+
+  - id: M-4
+    command: /wiki
+    text: "리타 관련 자료"
+    description: "content_search baseline (변경 없음)"
+    expected_intent:
+      request_type: content_search
+    expected_sql_path: 1
+    expected_results_min: 1
+    critical_checks:
+      - "FTS + weight 경로"
+      - "skip_weight=False"
+
+  - id: M-5
+    command: /gdi
+    text: "패치노트 \\ 이번 달 \\ 카제나"
+    description: "list 경로 — 시간 표현 제거 (MAJOR-NEW-2) + _next_day (MAJOR-NEW-5)"
+    expected_intent:
+      request_type: list
+      path_segments: ["패치노트", "이번 달", "카제나"]
+      file_kind: ["patch_note"]
+      game_alias_kr: ["카제나"]
+      ref_date_from: "2026-04-01"
+      ref_date_to: "2026-04-29"
+    expected_cleaned_segments: ["패치노트", "카제나"]
+    expected_removed_time_segs: ["이번 달"]
+    expected_sql_path: 3
+    expected_sql_like_pattern_contains: ["패치노트", "카제나"]
+    expected_sql_like_pattern_excludes: ["이번 달"]
+    expected_sql_params_contains: ["2026-04-30"]
+    critical_checks:
+      - "_strip_time_expressions 적용 — MAJOR-NEW-2"
+      - "'이번 달' segment가 path LIKE에 포함되지 않음"
+      - "_next_day(ref_date_to) 적용 — MAJOR-NEW-5"
+      - "ref_date exclusive upper bound"

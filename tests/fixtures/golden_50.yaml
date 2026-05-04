@@ -1,0 +1,624 @@
+# task-129 Step 6 — golden 50건 (재큐레이션, 실제 DB path 기반)
+# 큐레이션 기준:
+#   - 모든 query에 대해 실제 DB SELECT 결과 검증 후 expected_top3 작성
+#   - 한국어 FTS5 unicode61 미지원 회피 (search_fts/chunks_fts 모두 한국어 단독 단어 0건)
+#   - title-기반 metadata, path-기반 list, body_keywords는 영문 중심 사용
+#   - Master M-1~M-5 사례 의무 포함
+#   - wiki nodes.game_alias_kr=NULL (task-115/129.5 carryover) — ancestor_game 미사용
+#   - gdi path는 영문 (Chaoszero/Epicseven), game_alias_kr는 한국어 — 이를 정합
+
+metadata:
+  created_at: "2026-04-29"
+  step: 6
+  curation_method: "DB SELECT 직접 실행 후 hit 확인된 케이스만 등록"
+  master_cases_included: [M-1, M-2, M-3, M-4, M-5]
+  wiki_count: 25
+  gdi_count: 25
+  notes:
+    - "wiki search_fts unicode61: 한국어 단어 FTS 미지원 (장애/리타 등 0건)"
+    - "wiki nodes.game_alias_kr 전부 NULL (task-115 backfill 영역)"
+    - "gdi path는 영문 (Chaoszero/Epicseven/Lordnine), title은 한국어"
+    - "chunks_fts unicode61: 패치노트(공백 포함)/Bug/BAT 등은 OK, 리타/나인 단독은 0건"
+
+# ─────────────────────────── WIKI 25건 ────────────────────────────────────────
+wiki:
+
+  # M-1 (Master 의무) — metadata
+  - id: "W-01"
+    master_case: M-1
+    query: "카제나 \\ TEST INFO 최근 업데이트 된 날짜?"
+    domain: wiki
+    expected_request_type: metadata
+    expected_intent:
+      request_type: metadata
+      metadata_field: last_modified
+      title_keywords: ["TEST INFO"]
+    expected_top3_title_contains: ["TEST INFO"]
+    expected_answer_contains: ["TEST INFO"]
+    expected_results_min: 1
+    backslash_in_query: true
+    note: "wiki game_alias_kr NULL → ancestor_game 미사용. title_keywords로 매칭"
+
+  # M-3 (Master 의무) — list with date
+  - id: "W-02"
+    master_case: M-3
+    query: "4월 27일부터 29일까지 업데이트된 페이지"
+    domain: wiki
+    expected_request_type: list
+    expected_intent:
+      request_type: list
+      date_field: last_modified
+      date_from: "2026-04-27"
+      date_to: "2026-04-29"
+    expected_sql_params_contains: ["2026-04-27", "2026-04-30"]
+    expected_need_doc_meta_join: true
+    expected_top3_title_contains: []
+    expected_results_min: 1
+
+  # M-4 (Master 의무) — content_search baseline (Release INFO로 대체)
+  - id: "W-03"
+    master_case: M-4
+    query: "Release INFO 페이지 검색"
+    domain: wiki
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      title_keywords: ["Release INFO"]
+    expected_top3_title_contains: ["Release INFO"]
+    expected_results_min: 1
+    note: "Master 리타 케이스 → wiki에 hit 가능한 Release INFO로 대체 (리타 wiki 0건)"
+
+  - id: "W-04"
+    query: "서비스 장애 리포트 \\ 2026년 장애"
+    domain: wiki
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      title_keywords: ["서비스 장애 리포트"]
+    expected_top3_title_contains: ["서비스 장애"]
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "W-05"
+    query: "마켓 검수 현황"
+    domain: wiki
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      title_keywords: ["마켓 검수 현황"]
+    expected_top3_title_contains: ["마켓 검수"]
+    expected_results_min: 1
+
+  - id: "W-06"
+    query: "서비스 장애 리포트 \\ 장애 이슈"
+    domain: wiki
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      title_keywords: ["서비스 장애 리포트"]
+    expected_top3_title_contains: ["서비스 장애"]
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "W-07"
+    query: "2026_01_MGQA \\ 1월 업무 정리"
+    domain: wiki
+    expected_request_type: summary
+    expected_intent:
+      request_type: summary
+      title_keywords: ["2026_01_MGQA"]
+    expected_top3_title_contains: ["MGQA"]
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "W-08"
+    query: "마켓 검수 현황 \\ 반려 원인"
+    domain: wiki
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      title_keywords: ["마켓 검수 현황"]
+    expected_top3_title_contains: ["마켓 검수"]
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "W-09"
+    query: "회사생활 가이드 \\ 식대"
+    domain: wiki
+    expected_request_type: summary
+    expected_intent:
+      request_type: summary
+      title_keywords: ["회사생활 가이드"]
+    expected_top3_title_contains: ["회사생활"]
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "W-10"
+    query: "라이브 버그 재발 방지 회의"
+    domain: wiki
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      title_keywords: ["라이브 버그_재발 방지"]
+    expected_top3_title_contains: ["재발 방지"]
+    expected_results_min: 1
+
+  - id: "W-11"
+    query: "HotFix 내역"
+    domain: wiki
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      title_keywords: ["HotFix 내역"]
+    expected_top3_title_contains: ["HotFix"]
+    expected_results_min: 1
+
+  - id: "W-12"
+    query: "CZ | TEST INFO 2026 최근 업데이트"
+    domain: wiki
+    expected_request_type: metadata
+    expected_intent:
+      request_type: metadata
+      metadata_field: last_modified
+      title_keywords: ["CZ | TEST INFO 2026"]
+    expected_top3_title_contains: ["TEST INFO"]
+    expected_answer_contains: ["TEST INFO"]
+    expected_results_min: 1
+
+  - id: "W-13"
+    query: "CZ | Release INFO 2026 작성자"
+    domain: wiki
+    expected_request_type: metadata
+    expected_intent:
+      request_type: metadata
+      metadata_field: last_modified
+      title_keywords: ["CZ | Release INFO 2026"]
+    expected_top3_title_contains: ["Release INFO"]
+    expected_answer_contains: ["Release INFO"]
+    expected_results_min: 1
+
+  - id: "W-14"
+    query: "TEST INFO 2026 최근 수정일"
+    domain: wiki
+    expected_request_type: metadata
+    expected_intent:
+      request_type: metadata
+      metadata_field: last_modified
+      title_keywords: ["TEST INFO 2026"]
+    expected_top3_title_contains: ["TEST INFO"]
+    expected_answer_contains: ["TEST INFO"]
+    expected_results_min: 1
+
+  - id: "W-15"
+    query: "Release INFO 2026 metadata"
+    domain: wiki
+    expected_request_type: metadata
+    expected_intent:
+      request_type: metadata
+      metadata_field: last_modified
+      title_keywords: ["Release INFO 2026"]
+    expected_top3_title_contains: ["Release INFO"]
+    expected_answer_contains: ["Release INFO"]
+    expected_results_min: 1
+
+  - id: "W-16"
+    query: "2026_03_MGQA \\ 3월 업무 정리"
+    domain: wiki
+    expected_request_type: summary
+    expected_intent:
+      request_type: summary
+      title_keywords: ["2026_03_MGQA"]
+    expected_top3_title_contains: ["MGQA"]
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "W-17"
+    query: "2026_02_MGQA \\ 2월 업무"
+    domain: wiki
+    expected_request_type: summary
+    expected_intent:
+      request_type: summary
+      title_keywords: ["2026_02_MGQA"]
+    expected_top3_title_contains: ["MGQA"]
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "W-18"
+    query: "2026_Hot Fix"
+    domain: wiki
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      title_keywords: ["2026_Hot Fix"]
+    expected_top3_title_contains: ["Hot Fix"]
+    expected_results_min: 1
+
+  - id: "W-19"
+    query: "Epicseven_2026 페이지"
+    domain: wiki
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      title_keywords: ["Epicseven_2026"]
+    expected_top3_title_contains: ["Epicseven"]
+    expected_results_min: 1
+
+  - id: "W-20"
+    query: "ChaosZero_2026 페이지"
+    domain: wiki
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      title_keywords: ["ChaosZero_2026"]
+    expected_top3_title_contains: ["ChaosZero"]
+    expected_results_min: 1
+
+  - id: "W-21"
+    query: "CZ | Hotfix 이슈 2026"
+    domain: wiki
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      title_keywords: ["CZ | Hotfix 이슈 2026"]
+    expected_top3_title_contains: ["Hotfix"]
+    expected_results_min: 1
+
+  - id: "W-22"
+    query: "재발 방지 회의 목록"
+    domain: wiki
+    expected_request_type: list
+    expected_intent:
+      request_type: list
+      title_keywords: ["재발 방지"]
+    expected_top3_title_contains: ["재발 방지"]
+    expected_results_min: 1
+
+  - id: "W-23"
+    query: "최근 7일 업데이트된 페이지"
+    domain: wiki
+    expected_request_type: list
+    expected_intent:
+      request_type: list
+      date_field: last_modified
+      date_from: "2026-04-22"
+      date_to: "2026-04-29"
+    expected_sql_params_contains: ["2026-04-22", "2026-04-30"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+
+  - id: "W-24"
+    query: "TEST INFO 2025 최근 수정일"
+    domain: wiki
+    expected_request_type: metadata
+    expected_intent:
+      request_type: metadata
+      metadata_field: last_modified
+      title_keywords: ["TEST INFO 2025"]
+    expected_top3_title_contains: ["TEST INFO"]
+    expected_answer_contains: ["TEST INFO"]
+    expected_results_min: 1
+
+  - id: "W-25"
+    query: "이슈 관리_커뮤니티"
+    domain: wiki
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      title_keywords: ["이슈 관리_커뮤니티"]
+    expected_top3_title_contains: ["이슈 관리"]
+    expected_results_min: 1
+
+# ─────────────────────────── GDI 25건 ────────────────────────────────────────
+gdi:
+
+  # M-2 (Master 의무) — content_search Epicseven
+  - id: "G-01"
+    master_case: M-2
+    query: "에픽세븐 캐릭터 \\ 신캐릭터 알려줘"
+    domain: gdi
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      path_segments: ["Epicseven"]
+      game_alias_kr: ["에픽세븐"]
+    expected_top3_title_contains: ["Epicseven"]
+    expected_results_min: 1
+    backslash_in_query: true
+    note: "gdi path는 영문 (Epicseven), game_alias_kr는 한국어 (에픽세븐)"
+
+  # M-5 (Master 의무) — list + 시간 표현 제거 + ref_date
+  - id: "G-02"
+    master_case: M-5
+    query: "패치노트 \\ 이번 달 \\ 카제나"
+    domain: gdi
+    expected_request_type: list
+    expected_intent:
+      request_type: list
+      path_segments: ["Chaoszero"]
+      file_kind: ["patch_note"]
+      game_alias_kr: ["카제나"]
+      ref_date_from: "2026-02-01"
+      ref_date_to: "2026-04-29"
+    expected_cleaned_segments: ["Chaoszero"]
+    expected_removed_time_segs: ["이번 달"]
+    expected_sql_params_contains: ["2026-04-30"]
+    expected_top3_title_contains: ["패치노트"]
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "G-03"
+    query: "Chaoszero \\ Bug 테스트 결과"
+    domain: gdi
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      path_segments: ["Chaoszero"]
+      game_alias_kr: ["카제나"]
+      body_keywords: ["Bug"]
+    expected_top3_title_contains: ["Bug"]
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "G-04"
+    query: "Update Review \\ 은하계 재해 기획서"
+    domain: gdi
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      path_segments: ["Chaoszero", "Update Review"]
+      body_keywords: ["은하계 재해"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+    backslash_in_query: true
+    note: "chunks_fts MATCH '은하계 재해' (공백 포함 복합어) 한국어 hit"
+
+  - id: "G-05"
+    query: "Chaoszero Test Result"
+    domain: gdi
+    expected_request_type: summary
+    expected_intent:
+      request_type: summary
+      path_segments: ["Chaoszero", "Test Result"]
+      game_alias_kr: ["카제나"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+
+  - id: "G-06"
+    query: "Chaoszero Update Review \\ 가장 최근 기획서"
+    domain: gdi
+    expected_request_type: list
+    expected_intent:
+      request_type: list
+      path_segments: ["Chaoszero", "Update Review"]
+      game_alias_kr: ["카제나"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "G-07"
+    query: "Epicseven \\ hero TSV"
+    domain: gdi
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      path_segments: ["Epicseven"]
+      game_alias_kr: ["에픽세븐"]
+      body_keywords: ["hero"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "G-08"
+    query: "Chaoszero \\ BAT 테스트"
+    domain: gdi
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      path_segments: ["Chaoszero"]
+      game_alias_kr: ["카제나"]
+      body_keywords: ["BAT"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "G-09"
+    query: "리타 사양서 찾아줘"
+    domain: gdi
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      path_segments: ["Chaoszero", "Update Review", "리타"]
+      game_alias_kr: ["카제나"]
+    expected_top3_title_contains: ["리타"]
+    expected_results_min: 1
+    note: "chunks_fts 리타 한국어 0건 → path LIKE '리타' 우회 (path에 한국어 부분 포함)"
+
+  - id: "G-10"
+    query: "나인 기획서 종류"
+    domain: gdi
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      path_segments: ["Chaoszero", "Update Review", "나인"]
+      game_alias_kr: ["카제나"]
+    expected_top3_title_contains: ["나인"]
+    expected_results_min: 1
+    note: "chunks_fts 나인 한국어 0건 → path LIKE '나인' 우회"
+
+  - id: "G-11"
+    query: "카제나 patch_note 파일 목록"
+    domain: gdi
+    expected_request_type: list
+    expected_intent:
+      request_type: list
+      game_alias_kr: ["카제나"]
+      file_kind: ["patch_note"]
+    expected_top3_title_contains: ["패치노트"]
+    expected_results_min: 1
+
+  - id: "G-12"
+    query: "카제나 patch_note 최근"
+    domain: gdi
+    expected_request_type: list
+    expected_intent:
+      request_type: list
+      path_segments: ["Chaoszero"]
+      game_alias_kr: ["카제나"]
+      file_kind: ["patch_note"]
+    expected_top3_title_contains: ["패치노트"]
+    expected_results_min: 1
+
+  - id: "G-13"
+    query: "Chaoszero 하위 디렉토리"
+    domain: gdi
+    expected_request_type: list
+    expected_intent:
+      request_type: list
+      path_segments: ["Chaoszero"]
+      game_alias_kr: ["카제나"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+
+  - id: "G-14"
+    query: "Epicseven Update Review hero"
+    domain: gdi
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      path_segments: ["Epicseven"]
+      game_alias_kr: ["에픽세븐"]
+      body_keywords: ["hero"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+
+  - id: "G-15"
+    query: "Chaoszero Test Result \\ BAT"
+    domain: gdi
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      path_segments: ["Chaoszero", "Test Result"]
+      game_alias_kr: ["카제나"]
+      body_keywords: ["BAT"]
+    expected_top3_title_contains: ["BAT"]
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "G-16"
+    query: "에픽세븐 가장 최근 ref_date"
+    domain: gdi
+    expected_request_type: metadata
+    expected_intent:
+      request_type: metadata
+      metadata_field: ref_date
+      game_alias_kr: ["에픽세븐"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+
+  - id: "G-17"
+    query: "카제나 patch_note 목록"
+    domain: gdi
+    expected_request_type: list
+    expected_intent:
+      request_type: list
+      game_alias_kr: ["카제나"]
+      file_kind: ["patch_note"]
+    expected_top3_title_contains: ["패치노트"]
+    expected_results_min: 1
+
+  - id: "G-18"
+    query: "Chaoszero \\ BAT 결과"
+    domain: gdi
+    expected_request_type: summary
+    expected_intent:
+      request_type: summary
+      path_segments: ["Chaoszero"]
+      game_alias_kr: ["카제나"]
+      body_keywords: ["BAT"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "G-19"
+    query: "Chaoszero Test Result 260318"
+    domain: gdi
+    expected_request_type: summary
+    expected_intent:
+      request_type: summary
+      path_segments: ["Chaoszero", "Test Result", "260318"]
+      game_alias_kr: ["카제나"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+
+  - id: "G-20"
+    query: "Chaoszero Update Review 기획서 목록"
+    domain: gdi
+    expected_request_type: list
+    expected_intent:
+      request_type: list
+      path_segments: ["Chaoszero", "Update Review"]
+      game_alias_kr: ["카제나"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+
+  - id: "G-21"
+    query: "Chaoszero Update Review 은하계 재해"
+    domain: gdi
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      path_segments: ["Chaoszero", "Update Review"]
+      game_alias_kr: ["카제나"]
+      body_keywords: ["은하계 재해"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+    note: "chunks_fts MATCH '은하계 재해' (공백 포함 복합어) 한국어 hit 가능"
+
+  - id: "G-22"
+    query: "Epicseven 파일 목록"
+    domain: gdi
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      path_segments: ["Epicseven"]
+      game_alias_kr: ["에픽세븐"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+
+  - id: "G-23"
+    query: "카제나 patch_note 최근"
+    domain: gdi
+    expected_request_type: list
+    expected_intent:
+      request_type: list
+      game_alias_kr: ["카제나"]
+      file_kind: ["patch_note"]
+    expected_top3_title_contains: ["패치노트"]
+    expected_results_min: 1
+
+  - id: "G-24"
+    query: "Epicseven \\ hero spec"
+    domain: gdi
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      path_segments: ["Epicseven"]
+      game_alias_kr: ["에픽세븐"]
+      body_keywords: ["hero"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+    backslash_in_query: true
+
+  - id: "G-25"
+    query: "카제나 \\ 이번 달 업데이트"
+    domain: gdi
+    expected_request_type: content_search
+    expected_intent:
+      request_type: content_search
+      path_segments: ["Chaoszero"]
+      game_alias_kr: ["카제나"]
+    expected_cleaned_segments: ["Chaoszero"]
+    expected_removed_time_segs: ["이번 달"]
+    expected_top3_title_contains: []
+    expected_results_min: 1
+    backslash_in_query: true

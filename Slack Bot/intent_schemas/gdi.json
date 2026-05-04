@@ -1,0 +1,112 @@
+{
+  "domain": "gdi",
+  "schema_version": 4,
+  "fields": {
+    "request_type": {
+      "type": "string",
+      "enum_values": ["metadata", "content_search", "list", "summary"],
+      "default": "content_search"
+    },
+    "metadata_field": {
+      "type": "string",
+      "enum_values": ["last_modified", "ref_date", "file_kind", "folder_role", null],
+      "default": null
+    },
+    "path_segments": {
+      "type": "array",
+      "items_type": "string",
+      "default": [],
+      "description": "v4 MAJOR-NEW-2: Query builder 단계에서 시간 표현 자동 제거. 시간 표현은 ref_date_from/to로 변환됨"
+    },
+    "folder_role": {
+      "type": "array",
+      "items_type": "string",
+      "enum_examples_actual": ["game_data","planning","unknown","qa_result","live_issue","dashboard"],
+      "default": []
+    },
+    "game_alias_kr": {
+      "type": "array",
+      "items_type": "string",
+      "enum_examples_actual": ["에픽세븐","카제나","로드나인 아시아"],
+      "default": []
+    },
+    "file_kind": {
+      "type": "array",
+      "items_type": "string",
+      "enum_examples_actual": ["issue_unit_planning","bat_result","patch_note","qa_check_list","bug_verification","update_checklist","live_issue_community","common_ref_doc","live_issue_cs"],
+      "_warning": "NULL=92.32%. weight matrix 키 아님 (ADR-129-06: folder_role 기반). file_kind는 query 정밀화용",
+      "default": []
+    },
+    "ref_date_from": {
+      "type": "string",
+      "format": "YYYY-MM-DD",
+      "default": null
+    },
+    "ref_date_to": {
+      "type": "string",
+      "format": "YYYY-MM-DD",
+      "default": null
+    },
+    "file_path_hint": {
+      "type": "string",
+      "default": null
+    },
+    "body_keywords": {
+      "type": "array",
+      "items_type": "string",
+      "default": []
+    },
+    "limit": {
+      "type": "integer",
+      "min": 1,
+      "max": 30,
+      "default": 10
+    },
+    "ambiguity_notes": {
+      "type": "string",
+      "default": ""
+    },
+    "ai_failed": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "extraction_rules": [
+    "─── MAJOR-7 request_type 분기 ───",
+    "1. '언제 업데이트/시점/날짜' → request_type='metadata', metadata_field='last_modified' or 'ref_date'",
+    "2. '~파일 종류/유형' → request_type='metadata', metadata_field='file_kind'",
+    "3. '~목록/리스트/전부' → request_type='list'",
+    "4. '~요약/정리' → request_type='summary'",
+    "5. 그 외 → request_type='content_search'",
+    "─── MAJOR-6 '\\\\' 구분자 처리 ───",
+    "6. 사용자 입력 '\\\\' split → path_segments 좌→우 narrowing",
+    "   예: '에픽세븐 \\\\ 캐릭터 \\\\ 신캐' → path_segments=['에픽세븐','캐릭터','신캐']",
+    "   예: '패치노트 \\\\ 이번 달 \\\\ 카제나' → path_segments=['패치노트','이번 달','카제나']",
+    "7. path_segments[0]이 game_aliases canonical과 매칭되면 game_alias_kr=[해당]",
+    "─── MAJOR-NEW-2 시정 (v4): 시간 표현 segment 처리 ───",
+    "8. path_segments에 시간 표현이 포함되어도 그대로 채울 것 (Claude는 split 결과 그대로 보고)",
+    "   예: '패치노트 \\\\ 이번 달 \\\\ 카제나' → path_segments=['패치노트','이번 달','카제나']",
+    "   ⚠️ Query builder 단계에서 자동 제거 (_strip_time_expressions). MAJOR-NEW-2 v4 시정.",
+    "9. 동시에 시간 표현 → ref_date_from/ref_date_to 변환 (rule 12 정합)",
+    "   예: '이번 달' → ref_date_from='{이번달_1일}', ref_date_to='{오늘}'",
+    "─── enum 매핑 ───",
+    "10. folder_role/file_kind는 enum_examples_actual 우선 매핑 (query 정밀화용 — LIKE 보조)",
+    "    - '캐릭터 스펙/기획서' → folder_role=['planning'], file_kind=['issue_unit_planning']",
+    "    - '패치노트' → file_kind=['patch_note']",
+    "    - '체크리스트' → file_kind=['qa_check_list','update_checklist']",
+    "    - '핫픽스/이슈' → folder_role=['live_issue']",
+    "11. game_alias_kr은 canonical 한글명 사용",
+    "─── 시간 변환 ───",
+    "12. ref_date_from/to 또는 last_modified — request_type/metadata_field에 따라 분기",
+    "13. 상대 시간 → today 기준 절대 변환:",
+    "    - '오늘' → ref_date_from=ref_date_to=오늘",
+    "    - '어제' → 어제~어제",
+    "    - '최근 N일' → 오늘-N일 ~ 오늘",
+    "    - '이번 주' → 이번주_월요일 ~ 오늘",
+    "    - '이번 달' → 이번달_1일 ~ 오늘",
+    "14. ambiguity_notes는 추정한 가정 1줄"
+  ],
+  "strict": true,
+  "reject_unknown_fields": true,
+  "array_enum_policy": "items_type만 검증, enum_examples_actual reject 안 함"
+}

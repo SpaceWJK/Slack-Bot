@@ -1,0 +1,163 @@
+# task-129 4-A regression baseline (MINOR-A 의무)
+# 생성 기준: logs/wiki_query.log + logs/gdi_query.log 빈도 top-20
+# 각 질의에 대해 현 운영 핸들러(legacy grep) 결과 기록
+# commit: test: task-129 4-A regression baseline 20 (MINOR-A)
+
+metadata:
+  created_at: "2026-04-29"
+  log_total_queries: 346
+  baseline_source: "wiki_query.log + gdi_query.log top-20 by frequency"
+  note: "expected_top1_node_id는 Step 5 QA에서 실측 후 채움. 현 단계는 질의 목록 확보."
+
+queries:
+  - id: "R01"
+    query: "서비스 장애 리포트"
+    domain: wiki
+    frequency: 6
+    expected_request_type: content_search
+    expected_top1_title_contains: "장애"
+    expected_results_min: 1
+
+  - id: "R02"
+    query: "서비스 장애 리포트 \\ 2026년에 발생한 장애를 등급별로 집계해줘"
+    domain: wiki
+    frequency: 5
+    expected_request_type: summary
+    expected_results_min: 1
+
+  - id: "R03"
+    query: "마켓 검수 현황 \\ Google Play vs App Store 반려 원인 차이 있어?"
+    domain: wiki
+    frequency: 5
+    expected_request_type: content_search
+    expected_results_min: 1
+
+  - id: "R04"
+    query: "서비스 장애 리포트 \\ 2026년에 발생한 장애 이슈가 뭐야?"
+    domain: wiki
+    frequency: 4
+    expected_request_type: content_search
+    expected_results_min: 1
+
+  - id: "R05"
+    query: "2026_01_MGQA \\ 1월 주차별로 프로젝트 별 업무 내용 정리해줘"
+    domain: wiki
+    frequency: 4
+    expected_request_type: summary
+    expected_results_min: 1
+
+  - id: "R06"
+    query: "마켓 검수 현황 \\ 반복적으로 반려된 원인 TOP3 뭐야?"
+    domain: wiki
+    frequency: 4
+    expected_request_type: content_search
+    expected_results_min: 1
+
+  - id: "R07"
+    query: "마켓 검수 현황 \\ 이의제기한 히스토리들 요약해줘"
+    domain: wiki
+    frequency: 4
+    expected_request_type: summary
+    expected_results_min: 1
+
+  - id: "R08"
+    query: "라이브 버그_재발 방지 회의 \\ 반복적으로 등장한 이슈 유형이 있어?"
+    domain: wiki
+    frequency: 4
+    expected_request_type: content_search
+    expected_results_min: 1
+
+  - id: "R09"
+    query: "서비스 장애 리포트 \\ 반복적으로 발생한 장애 원인 패턴이 있어?"
+    domain: wiki
+    frequency: 4
+    expected_request_type: content_search
+    expected_results_min: 1
+
+  - id: "R10"
+    query: "회사생활 가이드 \\ 식대 관련 내용 요약해줘."
+    domain: wiki
+    frequency: 4
+    expected_request_type: summary
+    expected_results_min: 1
+
+  - id: "R11"
+    query: "Chaoszero \\ Update Review \\ 은하계 재해 기획서 종류"
+    domain: gdi
+    frequency: 4
+    expected_request_type: content_search
+    expected_game_alias_kr: "카제나"
+    expected_results_min: 1
+    note: "Step 6 시정: domain wiki→gdi + path segment를 \\ 구분으로 분리 (Chaoszero/Update Review path 구조 정합)"
+
+  - id: "R12"
+    query: "2026_MGQA \\ 3월 첫째주 카오스 제로 나이트메어 업무 내용 정리해줘"
+    domain: wiki
+    frequency: 3
+    expected_request_type: summary
+    expected_results_min: 1
+
+  - id: "R13"
+    query: "검수 반려 비율 \\ Google Play vs App Store 반려 원인 차이 있어?"
+    domain: wiki
+    frequency: 3
+    expected_request_type: content_search
+    expected_results_min: 1
+
+  - id: "R14"
+    query: "마켓 검수 현황 \\ 재검수까지 평균 몇 일 걸렸어?"
+    domain: wiki
+    frequency: 3
+    expected_request_type: content_search
+    expected_results_min: 1
+
+  - id: "R15"
+    query: "서비스 장애 리포트 \\ 장애 발생부터 복구까지 평균 소요 시간 알려줘"
+    domain: wiki
+    frequency: 3
+    expected_request_type: content_search
+    expected_results_min: 1
+
+  - id: "R16"
+    query: "마켓 검수 현황 \\ 월별 반려율 추이 정리해줘."
+    domain: wiki
+    frequency: 3
+    expected_request_type: list
+    expected_results_min: 1
+
+  - id: "R17"
+    query: "서비스 장애 리포트 \\ ChaosZero 프로젝트에서 발생한 레벨1 등급 장애가 있으면 알려줘"
+    domain: wiki
+    frequency: 3
+    expected_request_type: content_search
+    expected_results_min: 1
+
+  - id: "R18"
+    query: "Epicseven \\ 신캐릭터 알려줘"
+    domain: gdi
+    frequency: 2
+    expected_request_type: content_search
+    expected_game_alias_kr: "에픽세븐"
+    expected_results_min: 1
+    note: "Step 6 시정: gdi path는 영문 (Epicseven). path '캐릭터' 한국어 segment 제거 (path 매칭 실패 회피)"
+
+  - id: "R19"
+    query: "Chaoszero \\ 패치노트"
+    domain: gdi
+    frequency: 2
+    expected_request_type: content_search
+    expected_game_alias_kr: "카제나"
+    expected_results_min: 1
+    note: "Step 6 시정: gdi path 영문화 (카제나 → Chaoszero)"
+
+  - id: "R20"
+    query: "TEST INFO \\ 최근 업데이트 된 날짜?"
+    domain: wiki
+    frequency: 2
+    expected_request_type: metadata
+    expected_metadata_field: last_modified
+    expected_results_min: 1
+    note: "Step 6 시정: wiki game_alias_kr NULL이므로 첫 segment를 title로 매칭"
+
+# golden 50건은 Step 5 QA에서 Master 큐레이션 후 작성
+# (golden_50.yaml 자리 확보 — Step 5 인계)
