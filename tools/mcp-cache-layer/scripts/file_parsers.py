@@ -34,7 +34,10 @@ logger = logging.getLogger(__name__)
 # ── 상수 ──────────────────────────────────────────────────────────────────────
 MAX_TABLE_ROWS = 20000      # 마크다운 테이블 최대 행 수
 MAX_BODY_CHARS = 500_000    # body_text 최대 글자 수
-MAX_COL_WIDTH = 80          # 셀 값 최대 표시 길이 (넘으면 잘라냄)
+MAX_COL_WIDTH = 80          # xlsx 셀 값 최대 표시 길이 (넘으면 잘라냄)
+# task-127.7: pptx TABLE 셀은 multi-line 디자인 명세 본문이 흔함 — 80자 절단 시 손실 큼
+# (송윤선 sample loss 14.2%는 본 임계값 부족이 root cause — task-127.6 진단)
+MAX_PPTX_CELL_WIDTH = 500   # pptx TABLE 셀 — multi-line 본문 보존
 MAX_PRE_HEADER_CELLS_PER_ROW = 50  # task-127 S4-3: pre_header 행당 셀 최대 출력 수 (폭증 방지)
 # task-127 v3 시정 2: multi-line 셀 끝에 issue ID 패턴이 있으면 절단 시 보존
 # (#162733/#164993/#167702 같은 형식. 4자리 이상 숫자 — false positive 회피)
@@ -218,7 +221,9 @@ def _extract_text_frame(text_frame) -> str:
 def _extract_table(table) -> str:
     """PPTX 테이블을 마크다운 테이블로 변환한다.
 
-    task-127 v3 시정 3b: cell text 절단 시 끝 ID 패턴 보존 (xlsx _sanitize_cells 정합).
+    task-127 v3 시정 3b: cell text 절단 시 끝 ID 패턴 보존.
+    task-127.7 시정: pptx TABLE은 디자인 명세 multi-line 본문이 흔함 →
+                     MAX_PPTX_CELL_WIDTH=500 사용 (xlsx MAX_COL_WIDTH=80과 분리).
     """
     rows = []
     for r_idx in range(len(table.rows)):
@@ -226,15 +231,15 @@ def _extract_table(table) -> str:
         for c_idx in range(len(table.columns)):
             cell_text = table.cell(r_idx, c_idx).text.strip()
             cell_text = cell_text.replace("|", "\\|").replace("\n", " ")
-            if len(cell_text) > MAX_COL_WIDTH:
+            if len(cell_text) > MAX_PPTX_CELL_WIDTH:
                 # task-127 v3 시정 3b: 끝부분 ID 패턴 보존
                 tail_ids = _TRAILING_ID_RE.findall(cell_text)
                 if tail_ids:
                     tail_str = " " + " ".join(dict.fromkeys(tail_ids))
-                    head_w = max(0, MAX_COL_WIDTH - len(tail_str))
+                    head_w = max(0, MAX_PPTX_CELL_WIDTH - len(tail_str))
                     cell_text = cell_text[:head_w] + "…" + tail_str
                 else:
-                    cell_text = cell_text[:MAX_COL_WIDTH] + "…"
+                    cell_text = cell_text[:MAX_PPTX_CELL_WIDTH] + "…"
             cells.append(cell_text)
         rows.append(cells)
 
