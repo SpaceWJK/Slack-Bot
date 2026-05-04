@@ -27,10 +27,15 @@ def _to_kst(dt_str: Optional[str]) -> str:
         return dt_str or "정보 없음"
 
 
-def _question_text(intent) -> str:
-    """intent에서 사용자 원본 질문 복원 (path_segments 또는 keywords 조합)."""
+def _question_text(intent, raw_text: Optional[str] = None) -> str:
+    """사용자 원본 질문 복원 — raw_text 우선, fallback intent 추출.
+
+    task-132 PR1-J: 운영에서 "(요청 내용)" 표시 결함 시정. format_*_answer 호출자가
+    raw_text 명시 전달 시 사용자 원본 그대로 노출. intent path/keywords는 fallback.
+    """
+    if raw_text and raw_text.strip():
+        return raw_text.strip()
     parts = []
-    # gdi: path_segments / wiki: page_path_segments
     segs = (
         getattr(intent, "path_segments", None)
         or getattr(intent, "page_path_segments", None)
@@ -76,9 +81,9 @@ def _build_unified(question: str, answer: str, grounds: list, source: str) -> st
     return "\n".join(lines)
 
 
-def format_metadata_answer(hits: list, intent, domain: str = "wiki") -> str:
+def format_metadata_answer(hits: list, intent, domain: str = "wiki", raw_text: Optional[str] = None) -> str:
     """metadata 경로 답변 포맷 — 통일 포맷 (📋💬🔗📌)."""
-    question = _question_text(intent)
+    question = _question_text(intent, raw_text)
     source = _source_text(intent, domain)
 
     if not hits:
@@ -117,9 +122,9 @@ def format_metadata_answer(hits: list, intent, domain: str = "wiki") -> str:
     return _build_unified(question, answer, grounds, source)
 
 
-def format_list_answer(hits: list, intent, domain: str = "wiki") -> str:
+def format_list_answer(hits: list, intent, domain: str = "wiki", raw_text: Optional[str] = None) -> str:
     """list 경로 답변 포맷 — 통일 포맷 (📋💬🔗📌)."""
-    question = _question_text(intent)
+    question = _question_text(intent, raw_text)
     source = _source_text(intent, domain)
 
     if not hits:
@@ -142,9 +147,9 @@ def format_list_answer(hits: list, intent, domain: str = "wiki") -> str:
     return _build_unified(question, answer, grounds, source)
 
 
-def format_summary_answer(hits: list, intent, domain: str = "wiki") -> str:
+def format_summary_answer(hits: list, intent, domain: str = "wiki", raw_text: Optional[str] = None) -> str:
     """summary 경로 답변 포맷 — 통일 포맷 (📋💬🔗📌)."""
-    question = _question_text(intent)
+    question = _question_text(intent, raw_text)
     source = _source_text(intent, domain)
 
     if not hits:

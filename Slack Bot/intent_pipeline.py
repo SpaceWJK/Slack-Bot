@@ -182,11 +182,11 @@ def run_wiki_intent_pipeline(
     # ── Stage 4: answer_formatter / ask_claude 분기 (M-1 시정) ──
     try:
         if intent.request_type == "metadata":
-            respond(text=af_mod.format_metadata_answer(result.hits, intent, domain="wiki"))
+            respond(text=af_mod.format_metadata_answer(result.hits, intent, domain="wiki", raw_text=text))
         elif intent.request_type == "list":
-            respond(text=af_mod.format_list_answer(result.hits, intent, domain="wiki"))
+            respond(text=af_mod.format_list_answer(result.hits, intent, domain="wiki", raw_text=text))
         elif intent.request_type == "summary":
-            respond(text=af_mod.format_summary_answer(result.hits, intent, domain="wiki"))
+            respond(text=af_mod.format_summary_answer(result.hits, intent, domain="wiki", raw_text=text))
         else:  # content_search 또는 unknown
             if ask_claude_fn is None:
                 logger.warning("[wiki/intent] content_search ask_claude_fn 미주입 → fallthrough")
@@ -290,11 +290,11 @@ def run_gdi_intent_pipeline(
 
     try:
         if intent.request_type == "metadata":
-            respond(text=af_mod.format_metadata_answer(result.hits, intent, domain="gdi"))
+            respond(text=af_mod.format_metadata_answer(result.hits, intent, domain="gdi", raw_text=text))
         elif intent.request_type == "list":
-            respond(text=af_mod.format_list_answer(result.hits, intent, domain="gdi"))
+            respond(text=af_mod.format_list_answer(result.hits, intent, domain="gdi", raw_text=text))
         elif intent.request_type == "summary":
-            respond(text=af_mod.format_summary_answer(result.hits, intent, domain="gdi"))
+            respond(text=af_mod.format_summary_answer(result.hits, intent, domain="gdi", raw_text=text))
         else:  # content_search
             if ask_claude_fn is None:
                 logger.warning("[gdi/intent] content_search ask_claude_fn 미주입 → fallthrough")
