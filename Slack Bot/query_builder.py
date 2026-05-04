@@ -465,11 +465,34 @@ def build_gdi_query(intent) -> BuiltQuery:
         where_clauses.append("n.ref_date < ?")
         params.append(_next_day(intent.ref_date_to))
 
-    # body_keywords → FTS
-    body_keywords = getattr(intent, "body_keywords", [])
-    if body_keywords:
-        fts_query = " ".join(body_keywords)
+    # task-129.8.5: body_keywords 길이 분리 (FTS5 trigram ≥3자 한계 보강 — gdi)
+    # - ≤2자 한국어 → EXISTS subquery on doc_chunks.text (1:N relation, node 단위 매칭)
+    # - 3+자 / 영어 → 기존 chunks_fts MATCH (chunk 단위)
+    # - None / non-str / 빈 → 가드 무시
+    body_keywords = getattr(intent, "body_keywords", []) or []
+    fts_keywords = []
+    short_kr_keywords = []
+    for _kw in body_keywords:
+        if not isinstance(_kw, str) or not _kw:
+            continue
+        if _is_short_korean(_kw):
+            short_kr_keywords.append(_kw)
+        else:
+            fts_keywords.append(_kw)
+
+    if fts_keywords:
+        fts_query = " ".join(fts_keywords)
         has_fts = True
+
+    # task-129.8.5: short_kr_keywords → EXISTS subquery on doc_chunks.text
+    # 1:N relation 처리 — 메인 dc(JOIN doc_chunks)와 충돌 회피 위해 dc_lk 별칭 사용
+    for _skw in short_kr_keywords:
+        where_clauses.append(
+            "EXISTS (SELECT 1 FROM doc_chunks dc_lk "
+            "WHERE dc_lk.node_id = n.id "
+            "AND LOWER(dc_lk.text) LIKE ? ESCAPE '\\')"
+        )
+        params.append("%" + _escape_like(_skw.lower()) + "%")
 
     limit = getattr(intent, "limit", 10)
 

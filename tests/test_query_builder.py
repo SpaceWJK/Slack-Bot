@@ -614,3 +614,105 @@ class TestT129v8BuildWikiQueryLikeFallback:
         like_clauses = [c for c in built.where_clauses if 'dc.body_text' in c and 'LIKE' in c]
         assert len(like_clauses) == 1, \
             f"LIKE 절 1건 의무 (가드 통과 후 '리타'만). 받음 {len(like_clauses)}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# task-129.8.5: gdi build_gdi_query LIKE fallback (EXISTS subquery)
+# 설계: _workspace/tasks/task-129.8.5/step1_design.md
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestT129v8GdiLikeFallback:
+    """T-129.8.5-U1~U6: build_gdi_query LIKE fallback (EXISTS subquery)."""
+
+    def _make_gdi_intent(self, **kwargs):
+        from intent_extractor import GdiIntent
+        return GdiIntent(**kwargs)
+
+    def test_T129v85_U1_mixed_keywords_gdi(self):
+        """T-129.8.5-U1: ['리타','업데이트'] → fts='업데이트', EXISTS 1건."""
+        from query_builder import build_gdi_query
+        intent = self._make_gdi_intent(
+            request_type='content_search',
+            body_keywords=['리타', '업데이트'],
+        )
+        built = build_gdi_query(intent)
+        assert built.has_fts is True
+        assert built.fts_query == '업데이트'
+        # EXISTS 절 1건 (리타)
+        exists_clauses = [c for c in built.where_clauses if 'EXISTS' in c and 'doc_chunks' in c]
+        assert len(exists_clauses) == 1, f"EXISTS 절 1건 예상, 받음 {len(exists_clauses)}"
+        # params에 '%리타%'
+        assert any('%리타%' == p for p in built.params), f"params={built.params}"
+
+    def test_T129v85_U2_all_short_kr_gdi(self):
+        """T-129.8.5-U2: ['리타','장애'] → has_fts=False, EXISTS 2건, params 검증."""
+        from query_builder import build_gdi_query
+        intent = self._make_gdi_intent(
+            request_type='content_search',
+            body_keywords=['리타', '장애'],
+        )
+        built = build_gdi_query(intent)
+        assert built.has_fts is False
+        # EXISTS 정확히 2건
+        exists_clauses = [c for c in built.where_clauses if 'EXISTS' in c and 'doc_chunks' in c]
+        assert len(exists_clauses) == 2
+        # SQL 검증 (경로 3 — no-FTS, list)
+        assert 'EXISTS' in built.sql
+        assert 'dc_lk.node_id = n.id' in built.sql or 'dc_lk' in built.sql
+        # params
+        assert '%리타%' in built.params
+        assert '%장애%' in built.params
+
+    def test_T129v85_U3_3char_or_english_gdi_no_exists(self):
+        """T-129.8.5-U3: ['카제나','Bug'] → 모두 FTS, EXISTS 0건 (회귀)."""
+        from query_builder import build_gdi_query
+        intent = self._make_gdi_intent(
+            request_type='content_search',
+            body_keywords=['카제나', 'Bug'],
+        )
+        built = build_gdi_query(intent)
+        assert built.has_fts is True
+        # EXISTS 0건
+        exists_clauses = [c for c in built.where_clauses if 'EXISTS' in c and 'doc_chunks' in c]
+        assert len(exists_clauses) == 0, f"EXISTS 0건 기대 (회귀), 받음 {len(exists_clauses)}"
+
+    def test_T129v85_U4_dc_lk_alias_no_conflict(self):
+        """T-129.8.5-U4: EXISTS subquery는 dc_lk 별칭 사용 (메인 dc와 충돌 X)."""
+        from query_builder import build_gdi_query
+        intent = self._make_gdi_intent(
+            request_type='content_search',
+            body_keywords=['리타', '업데이트'],  # FTS + EXISTS 동시
+        )
+        built = build_gdi_query(intent)
+        # FTS 경로에서 메인 'dc' 별칭 사용 + EXISTS subquery는 'dc_lk'
+        assert 'JOIN doc_chunks dc ' in built.sql or 'JOIN doc_chunks dc\n' in built.sql, \
+            "메인 doc_chunks dc JOIN 정합"
+        assert 'dc_lk' in built.sql, "EXISTS dc_lk 별칭 사용"
+
+    def test_T129v85_U5_relaxation_l1_clears_exists(self):
+        """T-129.8.5-U5: L1 완화 (body_keywords=[]) → EXISTS 0건 (회귀)."""
+        import dataclasses
+        from query_builder import build_gdi_query
+        intent = self._make_gdi_intent(
+            request_type='content_search',
+            body_keywords=['리타'],
+        )
+        l1_intent = dataclasses.replace(intent, body_keywords=[])
+        built = build_gdi_query(l1_intent)
+        exists_clauses = [c for c in built.where_clauses if 'EXISTS' in c and 'doc_chunks' in c]
+        assert len(exists_clauses) == 0
+        assert built.has_fts is False or built.fts_query is None or built.fts_query == ''
+
+    def test_T129v85_U6_none_empty_guard_gdi(self):
+        """T-129.8.5-U6: body_keywords=[None,'리타',''] → 가드 통과, EXISTS 1건만."""
+        from query_builder import build_gdi_query
+        intent = self._make_gdi_intent(
+            request_type='content_search',
+            body_keywords=[None, '리타', '', 1, '업데이트'],
+        )
+        built = build_gdi_query(intent)
+        assert built.has_fts is True
+        assert '업데이트' in built.fts_query
+        # EXISTS 1건만 (리타)
+        exists_clauses = [c for c in built.where_clauses if 'EXISTS' in c and 'doc_chunks' in c]
+        assert len(exists_clauses) == 1
