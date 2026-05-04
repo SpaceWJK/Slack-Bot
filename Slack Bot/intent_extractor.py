@@ -289,7 +289,43 @@ def extract_intent(text: str, domain: str = "wiki"):
     _evict_intent_cache_if_full()
     _INTENT_CACHE[cache_key] = (intent, time.time())
     logger.debug("[intent_extractor] intent 추출 성공: domain=%s rt=%s", domain, intent.request_type)
+
+    # task-129.6 모니터링 인프라: 운영 audit용 Intent 추출 결과 dedicated 로그
+    # 1주일 monthly audit 100건 sample 정확도 측정 baseline (intent_audit.log)
+    _audit_log_intent(domain, text, intent)
+
     return intent
+
+
+def _audit_log_intent(domain: str, text: str, intent) -> None:
+    """task-129.6: Intent 추출 결과 audit 전용 로그 적재.
+
+    형식 (JSONL): {ts, domain, text_len, text_prefix, request_type, metadata_field,
+                   ambiguity_notes, ai_failed}
+    PII 보호: text 직접 미저장 (length + prefix 10자)
+    """
+    try:
+        import json as _json
+        import datetime as _dt
+        log_dir = Path(__file__).parent / "logs"
+        log_dir.mkdir(exist_ok=True)
+        log_path = log_dir / "intent_audit.jsonl"
+
+        record = {
+            "ts": _dt.datetime.now().isoformat(),
+            "domain": domain,
+            "text_len": len(text),
+            "text_prefix": text[:10] if text else "",
+            "request_type": getattr(intent, "request_type", None),
+            "metadata_field": getattr(intent, "metadata_field", None),
+            "ambiguity_notes": getattr(intent, "ambiguity_notes", "") or "",
+            "ai_failed": getattr(intent, "ai_failed", False),
+        }
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(_json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as e:
+        # audit 로그 실패는 운영 무영향
+        logger.debug("[intent_audit] log 적재 실패 (무시): %s", e)
 
 
 def _make_failed_intent(domain: str):
