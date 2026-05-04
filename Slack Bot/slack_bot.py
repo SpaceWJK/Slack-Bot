@@ -36,6 +36,8 @@ import wiki_client as wc
 import gdi_client as gc
 import jira_client as jc
 import claim_handler as ch
+# task-129.5 wiring: 4단계 파이프라인 helper (intent_pipeline.py)
+import intent_pipeline as ip
 from safety_guard import detect_write_intent, format_block_message, READ_ONLY_INSTRUCTION
 from ops_tracker import get_tracker as _get_ops_tracker
 
@@ -1535,6 +1537,21 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
                     respond(text=format_block_message(write_kw))
                     return
 
+                # ── task-129.5: 4단계 파이프라인 진입 시도 ──
+                # ai_failed=True / cache=None / 예외 → False (기존 흐름 fallthrough)
+                # 정상 처리 (응답 전송 또는 0건) → True (return)
+                if ip.run_wiki_intent_pipeline(
+                    text=text, page_part=page_part, question=question,
+                    respond=respond, cache_mgr=wc._wiki_cache,
+                    ask_claude_fn=_wiki_ask_claude,
+                ):
+                    wc.log_wiki_query(
+                        user_id=user_id, user_name=user_name,
+                        action="ask_claude_intent", query=text,
+                        result="intent_pipeline",
+                    )
+                    return
+
                 t0 = time.time()
                 # ── 페이지별 예외처리 규칙 확인 ──────────────────────────────
                 matched_rule = _find_matching_rule(page_part, question)
@@ -2066,6 +2083,20 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
             question     = pipe_parts[1]
 
             if search_query and question:
+                # ── task-129.5: 4단계 파이프라인 진입 시도 ──
+                # M-2 시정: _has_breadcrumb 분기는 위 L2209에서 처리 (여기는 not breadcrumb 보장)
+                if ip.run_gdi_intent_pipeline(
+                    text=text, folder=search_query, question=question,
+                    respond=respond, cache_mgr=gc._gdi_cache,
+                    ask_claude_fn=_gdi_ask_claude,
+                ):
+                    gc.log_gdi_query(
+                        user_id=user_id, user_name=user_name,
+                        action="ask_claude_intent", query=text,
+                        result="intent_pipeline",
+                    )
+                    return
+
                 t0 = time.time()
 
                 # ── 택소노미 우선 해석 (키워드+질문 결합) ─────────

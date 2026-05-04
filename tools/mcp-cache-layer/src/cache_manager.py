@@ -48,6 +48,10 @@ class CacheManager:
     def _conn(self) -> sqlite3.Connection:
         return get_connection(self._db_path)
 
+    def get_db_path(self) -> str:
+        """task-129.5 wiring: relaxation_engine.search_with_ladder 호환 db_path 노출."""
+        return self._db_path
+
     def _get_node_by_id(self, node_id: int) -> dict | None:
         """내부용: node_id로 노드 조회 (로깅용 제목 참조)."""
         conn = self._conn()
