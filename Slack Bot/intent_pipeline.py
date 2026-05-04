@@ -29,6 +29,9 @@ def hits_to_wiki_context(hits: list, max_chars: int = 10000) -> str:
     """task-129.5: relaxation_engine SearchHit list → Claude prompt context.
 
     _wiki_ask_claude(page_text=...) 호환. max_chars 제한.
+
+    task-132 PR2: 메타 정보(last_modified/ref_date/path/author) 헤더 노출.
+    list/시간범위 쿼리에서 LLM이 메타로 답변 가능하도록 시정 (gdi 일관성).
     """
     if not hits:
         return ""
@@ -37,7 +40,26 @@ def hits_to_wiki_context(hits: list, max_chars: int = 10000) -> str:
     for hit in hits[:10]:
         title = getattr(hit, "title", "제목 없음")
         snippet = getattr(hit, "snippet", "") or ""
-        block = f"## {title}\n{snippet[:1000]}\n"
+        meta = getattr(hit, "metadata", {}) or {}
+        last_modified = meta.get("last_modified") or ""
+        ref_date = meta.get("ref_date") or ""
+        path = meta.get("path") or ""
+        author = meta.get("author") or ""
+
+        header = f"## {title}"
+        meta_parts = []
+        if last_modified:
+            meta_parts.append(f"last_modified={last_modified}")
+        if ref_date:
+            meta_parts.append(f"ref_date={ref_date}")
+        if author:
+            meta_parts.append(f"author={author}")
+        if path:
+            meta_parts.append(f"path={path}")
+        if meta_parts:
+            header += f"  ({', '.join(meta_parts)})"
+
+        block = f"{header}\n{snippet[:1000]}\n"
         if total + len(block) > max_chars:
             break
         parts.append(block)
