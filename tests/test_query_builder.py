@@ -462,3 +462,155 @@ class TestWeightSort:
             f"T-11 MINOR-A FAIL: intent.game_alias_kr가 build 후 변이됨. "
             f"before={game_alias_before!r}, after={intent.game_alias_kr!r}"
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# task-129.8 v2: LIKE fallback (FTS5 trigram ≥3자 한계 보강)
+# 설계: step2_design_v2.md (Step 3 검수 12건 시정 반영)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestT129v8IsShortKorean:
+    """T-129.8-U1/U2/U3/U3b/U3c: _is_short_korean 분류 검증."""
+
+    def test_T129v8_U1_2char_korean_true(self):
+        """T-129.8-U1: '리타'/'장애' (2자 한국어) → True."""
+        from query_builder import _is_short_korean
+        assert _is_short_korean('리타') is True
+        assert _is_short_korean('장애') is True
+
+    def test_T129v8_U2_3char_or_english_false(self):
+        """T-129.8-U2: '카제나'(3자) / 'Bug'(영어) / 'a'(1자 영어) → False."""
+        from query_builder import _is_short_korean
+        assert _is_short_korean('카제나') is False
+        assert _is_short_korean('Bug') is False
+        assert _is_short_korean('a') is False
+
+    def test_T129v8_U3_1char_korean_true(self):
+        """T-129.8-U3: '리'(1자 한국어) → True (trigram 미충족)."""
+        from query_builder import _is_short_korean
+        assert _is_short_korean('리') is True
+        assert _is_short_korean('카') is True
+
+    def test_T129v8_U3b_non_str_or_empty_false(self):
+        """T-129.8-U3b (C-2 가드): None / "" / 1 / [] (non-str) → False."""
+        from query_builder import _is_short_korean
+        assert _is_short_korean(None) is False
+        assert _is_short_korean('') is False
+        assert _is_short_korean(1) is False
+        assert _is_short_korean([]) is False
+        assert _is_short_korean({}) is False
+
+    def test_T129v8_U3c_non_korean_chars_false(self):
+        """T-129.8-U3c: 한자/가나/자모 → False (한글 완성형 음절만)."""
+        from query_builder import _is_short_korean
+        # 한자 (U+4E00~U+9FFF) — 한국어 아님
+        assert _is_short_korean('中文') is False
+        # 일본어 가나 (U+3040~U+30FF)
+        assert _is_short_korean('あい') is False
+        # 한글 자모 단독 (U+3131~U+318E) — 완성형 음절 아님
+        assert _is_short_korean('ㄱ') is False
+        assert _is_short_korean('ㅏ') is False
+
+
+class TestT129v8BuildWikiQueryLikeFallback:
+    """T-129.8-U4~U9: build_wiki_query LIKE fallback 검증."""
+
+    def _make_intent(self, **kwargs):
+        from intent_extractor import WikiIntent
+        return WikiIntent(**kwargs)
+
+    def test_T129v8_U4_mixed_keywords(self):
+        """T-129.8-U4: ['리타','업데이트'] → fts에 '업데이트', LIKE에 '리타'."""
+        from query_builder import build_wiki_query
+        intent = self._make_intent(
+            request_type='content_search',
+            body_keywords=['리타', '업데이트'],
+        )
+        built = build_wiki_query(intent)
+        # FTS에 '업데이트'만
+        assert built.fts_query == '업데이트', f"fts_query={built.fts_query!r}"
+        assert built.has_fts is True
+        # LIKE 절에 '리타'
+        like_clauses = [c for c in built.where_clauses if 'dc.body_text' in c and 'LIKE' in c]
+        assert len(like_clauses) == 1, f"LIKE 절 1건 예상, 받음 {len(like_clauses)}"
+        # params에 '%리타%' 포함
+        assert any('%' + '리타' + '%' == p for p in built.params), \
+            f"params에 %리타% 누락. params={built.params}"
+
+    def test_T129v8_U5_all_short_kr_no_fts_with_sql_check(self):
+        """T-129.8-U5 (M-4 시정): ['리타','장애'] → has_fts=False, LIKE 절 2건, SQL/params 검증."""
+        from query_builder import build_wiki_query
+        intent = self._make_intent(
+            request_type='content_search',
+            body_keywords=['리타', '장애'],
+        )
+        built = build_wiki_query(intent)
+        assert built.has_fts is False
+        assert built.fts_query == '' or built.fts_query is None
+        # LIKE 절 정확히 2건
+        like_clauses = [c for c in built.where_clauses if 'dc.body_text' in c and 'LIKE' in c]
+        assert len(like_clauses) == 2, f"LIKE 절 2건 예상, 받음 {len(like_clauses)}"
+        # SQL 내용 검증 (M-4)
+        assert 'dc.body_text' in built.sql, "SQL에 dc.body_text 누락"
+        assert 'LIKE' in built.sql, "SQL에 LIKE 누락"
+        # params에 '%리타%' '%장애%' 둘 다 (M-4)
+        assert '%리타%' in built.params, f"params에 %리타% 누락. params={built.params}"
+        assert '%장애%' in built.params, f"params에 %장애% 누락. params={built.params}"
+
+    def test_T129v8_U6_3char_or_english_uses_fts_only(self):
+        """T-129.8-U6: ['카제나','Bug'] → 모두 FTS, LIKE 0건 (회귀 보장)."""
+        from query_builder import build_wiki_query
+        intent = self._make_intent(
+            request_type='content_search',
+            body_keywords=['카제나', 'Bug'],
+        )
+        built = build_wiki_query(intent)
+        assert built.has_fts is True
+        assert '카제나' in built.fts_query and 'Bug' in built.fts_query
+        # LIKE 절 0건
+        like_clauses = [c for c in built.where_clauses if 'dc.body_text' in c and 'LIKE' in c]
+        assert len(like_clauses) == 0, f"LIKE 절 0건 기대 (회귀), 받음 {len(like_clauses)}"
+
+    def test_T129v8_U7_escape_special_chars(self):
+        """T-129.8-U7: 한국어+특수문자 ('리%타') 정상 escape (SQL injection 방어)."""
+        from query_builder import _escape_like
+        # % → \%
+        escaped = _escape_like('리%타')
+        assert '\\%' in escaped, f"_escape_like %% 미escape. result={escaped!r}"
+        # _ → \_
+        assert '\\_' in _escape_like('장_애')
+        # \\ (1 backslash) → \\\\ (2 backslashes)
+        assert '\\\\' in _escape_like('a\\b')  # 'a\\b' = a + 1BS + b → escape 후 2BS
+
+    def test_T129v8_U8_relaxation_l1_clears_like(self):
+        """T-129.8-U8 (M-2 신규): L1 완화 (body_keywords=[]) → LIKE 절 0건 (회귀 정합)."""
+        import dataclasses
+        from query_builder import build_wiki_query
+        intent = self._make_intent(
+            request_type='content_search',
+            body_keywords=['리타'],
+        )
+        # L1 완화 시뮬레이션 (relaxation_engine.py:108 동일)
+        l1_intent = dataclasses.replace(intent, body_keywords=[])
+        built = build_wiki_query(l1_intent)
+        # LIKE 절 0건 (short_kr_keywords=[])
+        like_clauses = [c for c in built.where_clauses if 'dc.body_text' in c and 'LIKE' in c]
+        assert len(like_clauses) == 0, \
+            f"L1 완화 후 LIKE 절 0건 의무 (M-2). 받음 {len(like_clauses)}"
+        assert built.has_fts is False or built.fts_query == ''
+
+    def test_T129v8_U9_none_and_empty_guard(self):
+        """T-129.8-U9 (C-2 가드 검증): body_keywords=[None,'리타',''] → LIKE 1건만, TypeError 없음."""
+        from query_builder import build_wiki_query
+        intent = self._make_intent(
+            request_type='content_search',
+            body_keywords=[None, '리타', '', 1, '업데이트'],  # None/non-str/빈 모두 무시
+        )
+        built = build_wiki_query(intent)  # TypeError 없어야
+        # '업데이트' (3자) → fts
+        assert built.has_fts is True
+        assert '업데이트' in built.fts_query
+        # '리타' (2자 한국어) → LIKE
+        like_clauses = [c for c in built.where_clauses if 'dc.body_text' in c and 'LIKE' in c]
+        assert len(like_clauses) == 1, \
+            f"LIKE 절 1건 의무 (가드 통과 후 '리타'만). 받음 {len(like_clauses)}"

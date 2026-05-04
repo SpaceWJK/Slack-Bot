@@ -99,6 +99,25 @@ class BuiltQuery:
 
 # ── helper 함수들 ─────────────────────────────────────────────────────────────
 
+# task-129.8: FTS5 trigram의 ≥3자 multi-byte 한계 보강 (LIKE fallback)
+# 한글 완성형 음절 (U+AC00 ~ U+D7A3, '가'~'힣') — 자모 단독(ㄱ, ㅏ 등) 미포함
+_KOREAN_CHAR_RE = re.compile(r"[가-힣]")
+
+
+def _is_short_korean(kw) -> bool:
+    """task-129.8: FTS5 trigram이 못 잡는 2자 이하 한국어 단어 감지.
+
+    Returns:
+        True — 한글 완성형 음절 1+ 포함 + 길이 ≤2 → body_text LIKE fallback 의무
+        False — 3+자 / 영어 / None / 빈 / non-str / 자모 단독 / 한자 / 가나
+    """
+    if not isinstance(kw, str) or not kw:
+        return False
+    if len(kw) > 2:
+        return False
+    return bool(_KOREAN_CHAR_RE.search(kw))
+
+
 def _escape_like(s: str) -> str:
     """LIKE 패턴 escape (설계 v4 §5.6 + MAJOR-NEW-1).
 
@@ -277,12 +296,31 @@ def build_wiki_query(intent) -> BuiltQuery:
         where_clauses.append("dm.last_modified < ?")
         params.append(_next_day(date_to))
 
-    # body_keywords → FTS
-    body_keywords = getattr(intent, "body_keywords", [])
-    if body_keywords:
-        fts_q = " ".join(body_keywords)
-        fts_query = fts_q
+    # task-129.8 v2: body_keywords 길이 기반 분리 (FTS5 trigram ≥3자 한계 보강)
+    # - ≤2자 한국어 → LIKE fallback (FTS5 trigram 못 잡음)
+    # - 3+자 또는 영어 → FTS (기존 동작 유지)
+    # - None / non-str / 빈 → 가드 무시 (C-2)
+    body_keywords = getattr(intent, "body_keywords", []) or []
+    fts_keywords = []
+    short_kr_keywords = []
+    for _kw in body_keywords:
+        if not isinstance(_kw, str) or not _kw:
+            continue
+        if _is_short_korean(_kw):
+            short_kr_keywords.append(_kw)
+        else:
+            fts_keywords.append(_kw)
+
+    if fts_keywords:
+        fts_query = " ".join(fts_keywords)
         has_fts = True
+
+    # task-129.8: 2자 한국어 keywords → doc_content.body_text LIKE 절
+    # AND 결합 (모든 short_kr 단어 모두 매칭 — precision 우선)
+    # 주의: LIKE params append는 SQL 경로 1(FTS) prepend 이전에 완료되어야 binding 정합
+    for _skw in short_kr_keywords:
+        where_clauses.append("LOWER(dc.body_text) LIKE ? ESCAPE '\\'")
+        params.append("%" + _escape_like(_skw.lower()) + "%")
 
     # ── SQL 선택 (request_type별 경로) ────────────────────────────────────
     order_by = _resolve_order_by_wiki_list(intent, need_doc_meta_join)
