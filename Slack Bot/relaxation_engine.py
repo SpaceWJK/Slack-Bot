@@ -152,20 +152,29 @@ def search_with_ladder(cache_mgr, intent, domain: str) -> SearchResult:
 
 
 def _execute_query(cache_mgr, built) -> list:
-    """BuiltQuery 실행 → row list (빈 list on error)."""
+    """BuiltQuery 실행 → row list (빈 list on error).
+
+    task-129.7 LOW-1 시정: try/finally connection close 보장 (예외 시 누수 방지).
+    """
     import sqlite3
     db_path = cache_mgr.get_db_path()
     if db_path == ":memory:":
         return []
+    conn = None
     try:
         conn = sqlite3.connect(db_path, timeout=5)
         conn.row_factory = sqlite3.Row
         rows = conn.execute(built.sql, built.params).fetchall()
-        conn.close()
         return rows
     except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
         logger.warning("[relaxation_engine] 쿼리 실행 실패: %s", e)
         return []
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 # ── search_with_request_type_fallback ────────────────────────────────────────

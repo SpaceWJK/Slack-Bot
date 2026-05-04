@@ -22,6 +22,18 @@ logger = logging.getLogger(__name__)
 # ── 캐시 (jira_client.py:675 정합) ────────────────────────────────────────────
 _INTENT_CACHE: "dict[str, tuple]" = {}   # {key: (intent, timestamp)}
 _INTENT_CACHE_TTL = 60                   # seconds
+_INTENT_CACHE_MAX = 500                  # task-129.7 LOW-2: 무한 누적 방지 (LRU eviction)
+
+
+def _evict_intent_cache_if_full() -> None:
+    """task-129.7 LOW-2: _INTENT_CACHE 크기가 max 초과 시 가장 오래된 entry 제거."""
+    if len(_INTENT_CACHE) <= _INTENT_CACHE_MAX:
+        return
+    # timestamp 기준 가장 오래된 25% 제거 (배치 evict로 amortize)
+    target_remove = len(_INTENT_CACHE) - int(_INTENT_CACHE_MAX * 0.75)
+    sorted_keys = sorted(_INTENT_CACHE.items(), key=lambda kv: kv[1][1])
+    for k, _ in sorted_keys[:target_remove]:
+        _INTENT_CACHE.pop(k, None)
 
 # ── schema 디렉터리 ──────────────────────────────────────────────────────────
 _SCHEMA_DIR = Path(__file__).parent / "intent_schemas"
@@ -259,7 +271,12 @@ def extract_intent(text: str, domain: str = "wiki"):
     try:
         raw_json = json.loads(raw)
     except json.JSONDecodeError as e:
-        logger.warning("[intent_extractor] JSON 파싱 실패: %s | raw=%r", e, raw[:100])
+        # task-129.7 INFO-2: raw 내용 직접 노출 대신 길이만 + 첫 5자 prefix (PII 노출 최소화)
+        prefix = raw[:5] if raw else ""
+        logger.warning(
+            "[intent_extractor] JSON 파싱 실패: %s | raw_len=%d prefix=%r",
+            e, len(raw), prefix,
+        )
         return _make_failed_intent(domain)
 
     # strict 검증
@@ -268,7 +285,8 @@ def extract_intent(text: str, domain: str = "wiki"):
         logger.warning("[intent_extractor] schema 검증 실패: domain=%s", domain)
         return _make_failed_intent(domain)
 
-    # 캐시 저장
+    # 캐시 저장 (task-129.7 LOW-2: max-size 초과 시 LRU eviction)
+    _evict_intent_cache_if_full()
     _INTENT_CACHE[cache_key] = (intent, time.time())
     logger.debug("[intent_extractor] intent 추출 성공: domain=%s rt=%s", domain, intent.request_type)
     return intent
