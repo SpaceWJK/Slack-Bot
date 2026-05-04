@@ -131,23 +131,33 @@ def _is_summary_sheet(sheet_name: str) -> bool:
 
 
 def _deduplicate_headers(headers):
-    """중복 헤더 텍스트를 제거하고 유니크한 열만 남긴다.
+    """중복 헤더 텍스트를 처리하고 유니크한 열 이름을 반환한다.
+
+    task-127 Step 6 시정: 중복 헤더 열을 단순 제거하는 대신 suffix(_2, _3, ...)를
+    붙여서 데이터를 보존한다. 예: ['변화율', '변화율'] → ['변화율', '변화율_2'].
+    이렇게 하면 기간별 변화율 컬럼처럼 의미있는 중복 컬럼의 데이터 손실을 방지한다.
 
     Returns:
-        (deduplicated_headers, keep_col_indices)  — 중복 없으면 keep_cols=[]
+        (renamed_headers, keep_col_indices)
+        keep_col_indices: 변경이 있으면 전체 인덱스 목록, 없으면 [] (호환성 유지)
     """
-    seen = {}
-    keep_cols = []
-    deduped = []
+    seen: dict = {}  # 헤더 값 → 마지막 suffix 번호
+    renamed = []
+    has_change = False
+
     for i, h in enumerate(headers):
         if h and h in seen:
-            continue
-        seen[h] = i
-        keep_cols.append(i)
-        deduped.append(h)
-    if len(deduped) == len(headers):
-        return headers, []
-    return deduped, keep_cols
+            seen[h] += 1
+            renamed.append(f"{h}_{seen[h]}")
+            has_change = True
+        else:
+            seen[h] = 1
+            renamed.append(h)
+
+    if not has_change:
+        return headers, []  # 중복 없음 — 원본 반환, keep_cols=[] (전체 열 유지)
+
+    return renamed, list(range(len(renamed)))
 
 
 def _fill_down_chunks(headers, rows):

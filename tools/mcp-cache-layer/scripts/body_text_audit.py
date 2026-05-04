@@ -65,8 +65,8 @@ FTS_CHUNK_SIZE = 999            # SQLite placeholder 한계
 SUPPORTED_EXTS = {'.xlsx', '.tsv', '.pptx'}
 
 PARSERS = {
-    # M-2 (task-125): parse_xlsx 시그니처 변경(extract_images 추가) 후
-    # 이미지 디스크 저장 없이 마커만 body에 포함하도록 wrapper 적용
+    # task-127 S4-7 M-2 (CRITICAL 3): lambda wrapper로 extract_images=False 명시
+    # parse_xlsx 시그니처 변경(task-125) 후 기본값 True이므로 이미지 저장 방지 필수
     '.xlsx': lambda p: parse_xlsx(p, extract_images=False),
     '.tsv': parse_tsv,
     '.pptx': parse_pptx,

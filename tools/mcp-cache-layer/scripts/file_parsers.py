@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 MAX_TABLE_ROWS = 20000      # 마크다운 테이블 최대 행 수
 MAX_BODY_CHARS = 500_000    # body_text 최대 글자 수
 MAX_COL_WIDTH = 80          # 셀 값 최대 표시 길이 (넘으면 잘라냄)
+MAX_PRE_HEADER_CELLS_PER_ROW = 50  # task-127 S4-3: pre_header 행당 셀 최대 출력 수 (폭증 방지)
 IMAGE_DIR_NAME = "_images"  # 이미지 추출 저장 폴더명
 _tesseract_available: "bool | None" = None  # None=미확인, True=가용, False=불가
 
@@ -401,7 +402,8 @@ def parse_xlsx(file_path: str, *, extract_images: bool = True,
 
         # Summary/Report 시트 → 워크시트에서 직접 key-value 파싱
         if _is_summary_sheet_ws(sname, ws):
-            summary_md = _parse_summary_sheet_ws(sname, ws)
+            # task-127 S4-4 MI-1: formula_map 전달 → summary 시트도 수식 augment
+            summary_md = _parse_summary_sheet_ws(sname, ws, formula_map_all.get(sname))
             if summary_md:
                 parts.append(summary_md)
             # Summary 시트의 이미지 marker도 본문에 추가
@@ -458,14 +460,25 @@ def parse_xlsx(file_path: str, *, extract_images: bool = True,
                                  for row in filtered_rows]
 
             # 테이블 헤더 행 감지
+            # task-127 S4-2 NC-1 시정: region_cols<=2인 단일/이중 컬럼에서 header_idx=None이면
+            # 첫 행을 헤더로 쓰면 데이터 1행 손실 → 더미 헤더 채택
             header_idx = _detect_header_row(filtered_rows)
             if header_idx is None:
-                header_idx = 0
-
-            # 헤더 전 행은 메타데이터로 추출
-            pre_header = filtered_rows[:header_idx]
-            headers = filtered_rows[header_idx]
-            data_rows = filtered_rows[header_idx + 1:]
+                if len(region_cols) <= 2:
+                    # NC-1: 더미 헤더 "(값)" × N — 데이터 전체 보존
+                    pre_header = []
+                    headers = ["(값)"] * len(region_cols)
+                    data_rows = filtered_rows
+                else:
+                    header_idx = 0
+                    pre_header = filtered_rows[:header_idx]
+                    headers = filtered_rows[header_idx]
+                    data_rows = filtered_rows[header_idx + 1:]
+            else:
+                # 헤더 전 행은 메타데이터로 추출
+                pre_header = filtered_rows[:header_idx]
+                headers = filtered_rows[header_idx]
+                data_rows = filtered_rows[header_idx + 1:]
 
             # 중복 헤더 제거 (수평 병합으로 같은 텍스트가 여러 열에)
             headers, keep_cols = _deduplicate_headers(headers)
@@ -601,7 +614,38 @@ def _read_sheet_raw(ws, h_merges: dict, formula_map: Optional[dict] = None) -> t
     col_merge_count = {}
     for (r, c) in h_merges:
         col_merge_count[c] = col_merge_count.get(c, 0) + 1
-    skip_cols = {c for c, cnt in col_merge_count.items() if cnt >= 2}
+
+    # task-127 S4-1 옵션 #2: 적응형 임계 + 데이터 셀 보존 가드 (설계 §4.1 v2)
+    # total_data_rows: ws.max_row 사용 (1차 증거 — U1b/U2b 단위 테스트 기준)
+    # 설계 MAJOR 2의 merged_rows 근사는 mock ws에서 오작동 → ws.max_row 직접 사용
+    total_data_rows = max(ws.max_row, 1)
+
+    # col별 데이터 셀 수 사전 계산 (병합 후속 셀 제외)
+    h_merges_set = set(h_merges.keys())
+    col_data_cells = {}
+    for c in range(1, ws.max_column + 1):
+        cnt_data = 0
+        for r in range(1, ws.max_row + 1):
+            if (r, c) in h_merges_set:
+                continue  # 병합 후속 셀 — 첫 셀에서만 카운트
+            v = ws.cell(row=r, column=c).value
+            if v is not None and str(v).strip() and str(v).strip() != "　":
+                cnt_data += 1
+        col_data_cells[c] = cnt_data
+
+    # 적응형 임계 + 데이터 셀 보존 가드 (옵션 #2)
+    adaptive_skip = set()
+    for c, cnt in col_merge_count.items():
+        if cnt < 2:
+            continue
+        # 가드 1: 적응형 50% — 구조적 매트릭스 보존 (cnt/max_r >= 0.5이면 skip 제외)
+        if cnt / total_data_rows >= 0.5:
+            continue
+        # 가드 2: 데이터 셀 보존 — col에 데이터 1건이라도 있으면 skip 제외
+        if col_data_cells.get(c, 0) >= 1:
+            continue
+        adaptive_skip.add(c)
+    skip_cols = adaptive_skip
 
     use_cols = [c for c in all_cols if c not in skip_cols]
 
@@ -646,7 +690,7 @@ def _is_summary_sheet_ws(name: str, ws) -> bool:
     return False
 
 
-def _parse_summary_sheet_ws(name: str, ws) -> str:
+def _parse_summary_sheet_ws(name: str, ws, formula_map: Optional[dict] = None) -> str:
     """Summary 시트를 워크시트에서 직접 key-value 마크다운으로 변환한다.
 
     QA Report Summary 시트 구조:
@@ -672,6 +716,10 @@ def _parse_summary_sheet_ws(name: str, ws) -> str:
             if val is not None:
                 val = str(val).strip().replace("\n", " ")
                 if val and val != "\u3000":
+                    # task-127 S4-4: formula_map augment \uc801\uc6a9 (summary \uc2dc\ud2b8\ub3c4 \uc218\uc2dd \ubcf4\uc874)
+                    if formula_map is not None:
+                        formula = formula_map.get((actual_r, actual_c))
+                        val = _format_cell_value_with_formula(val, formula)
                     cells.append((c, val))
 
         if not cells:
@@ -825,26 +873,38 @@ def _split_column_regions(non_empty_cols: list[int],
 
 
 def _deduplicate_headers(headers: list[str]) -> tuple[list[str], list[int]]:
-    """중복 헤더 텍스트를 제거하고 유니크한 열만 남긴다.
+    """중복 헤더 텍스트를 처리하고 유니크한 열 이름을 반환한다.
+
+    task-127 Step 6 시정: 중복 헤더 열을 단순 제거하는 대신 suffix(_2, _3, ...)를
+    붙여서 데이터를 보존한다. 예: ['변화율', '변화율'] → ['변화율', '변화율_2'].
+    이렇게 하면 기간별 변화율 컬럼처럼 의미있는 중복 컬럼의 데이터 손실을 방지한다.
+
+    수평 병합(h_merges) 기반 중복만 제거 — 이는 호출부에서 use_cols 레벨에서 이미
+    처리되므로 여기서는 suffix 방식으로 전환한다.
 
     Returns:
-        (deduplicated_headers, keep_col_indices)
+        (renamed_headers, keep_col_indices)
+        keep_col_indices: 변경이 있으면 전체 인덱스 목록, 없으면 [] (호환성 유지)
     """
-    seen = {}
-    keep_cols = []
-    deduped = []
+    seen: dict[str, int] = {}  # 헤더 값 → 마지막 suffix 번호
+    renamed: list[str] = []
+    has_change = False
 
     for i, h in enumerate(headers):
         if h and h in seen:
-            continue  # 중복 → 건너뛰기
-        seen[h] = i
-        keep_cols.append(i)
-        deduped.append(h)
+            # 중복 헤더 → suffix 증가하여 보존
+            seen[h] += 1
+            renamed.append(f"{h}_{seen[h]}")
+            has_change = True
+        else:
+            seen[h] = 1
+            renamed.append(h)
 
-    if len(deduped) == len(headers):
-        return headers, []  # 중복 없음
+    if not has_change:
+        return headers, []  # 중복 없음 — 원본 반환, keep_cols=[] (전체 열 유지)
 
-    return deduped, keep_cols
+    # 중복이 있으면 keep_cols = 전체 인덱스 (모든 열 보존)
+    return renamed, list(range(len(renamed)))
 
 
 def _format_pre_header(pre_header: list[list[str]]) -> str:
@@ -860,6 +920,14 @@ def _format_pre_header(pre_header: list[list[str]]) -> str:
             lines.append(f"- {non_empty[0]}: {non_empty[1]}")
         elif len(non_empty) <= 4:
             lines.append("- " + " / ".join(non_empty))
+        else:
+            # task-127 S4-3: 5+ 셀 보존 + MAX_PRE_HEADER_CELLS_PER_ROW=50 가드
+            shown = non_empty[:MAX_PRE_HEADER_CELLS_PER_ROW]
+            remainder = len(non_empty) - len(shown)
+            line = "- " + " / ".join(shown)
+            if remainder > 0:
+                line += f" _( 외 {remainder}개 셀 생략)_"
+            lines.append(line)
     return "\n".join(lines)
 
 
