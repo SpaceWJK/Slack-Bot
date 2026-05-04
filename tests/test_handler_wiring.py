@@ -174,7 +174,11 @@ class TestWikiPipeline:
         relax_mod.search_with_ladder.assert_not_called()
 
     def test_T4_metadata_formatter(self):
-        """T-4: request_type=metadata → format_metadata_answer 호출."""
+        """T-4 (PR1-K 시정): metadata도 ask_claude_fn 우선 호출 (자연어 합성 통일).
+
+        이전: format_metadata_answer 호출. 시정 후: ask_claude_fn 우선 (사용자 명시 결함
+        — list/metadata 단순 list만 노출 → 답변 퀄리티 저하 체감).
+        """
         pipeline = self._import_pipeline()
         ie_mod = MagicMock()
         ie_mod.extract_intent.return_value = _make_wiki_intent(
@@ -186,21 +190,19 @@ class TestWikiPipeline:
             total_count=1,
         )
         af_mod = MagicMock()
-        af_mod.format_metadata_answer.return_value = "formatted_metadata"
-
+        ask_claude_mock = MagicMock()
         respond = MagicMock()
         result = pipeline(
             text="x \\ y", page_part="x", question="y",
             respond=respond, cache_mgr=MagicMock(),
             ie_mod=ie_mod, relax_mod=relax_mod, af_mod=af_mod,
-            ask_claude_fn=MagicMock(),
+            ask_claude_fn=ask_claude_mock,
         )
         assert result is True, "T-4: 처리 완료 시 True 반환"
-        af_mod.format_metadata_answer.assert_called_once()
-        respond.assert_called()
+        ask_claude_mock.assert_called_once()  # PR1-K: ask_claude 우선
 
     def test_T5_list_formatter(self):
-        """T-5: request_type=list → format_list_answer 호출."""
+        """T-5 (PR1-K 시정): list도 ask_claude_fn 우선 호출 (자연어 합성 통일)."""
         pipeline = self._import_pipeline()
         ie_mod = MagicMock()
         ie_mod.extract_intent.return_value = _make_wiki_intent(
@@ -211,19 +213,18 @@ class TestWikiPipeline:
             hits=[_MockHit(title="page1"), _MockHit(title="page2")], total_count=2,
         )
         af_mod = MagicMock()
-        af_mod.format_list_answer.return_value = "formatted_list"
-
+        ask_claude_mock = MagicMock()
         result = pipeline(
             text="x \\ y", page_part="x", question="y",
             respond=MagicMock(), cache_mgr=MagicMock(),
             ie_mod=ie_mod, relax_mod=relax_mod, af_mod=af_mod,
-            ask_claude_fn=MagicMock(),
+            ask_claude_fn=ask_claude_mock,
         )
         assert result is True
-        af_mod.format_list_answer.assert_called_once()
+        ask_claude_mock.assert_called_once()  # PR1-K: ask_claude 우선
 
     def test_T5b_summary_formatter(self):
-        """T-5b (M-1 시정): request_type=summary → format_summary_answer 호출."""
+        """T-5b (PR1-K 시정): summary도 ask_claude_fn 우선 호출."""
         pipeline = self._import_pipeline()
         ie_mod = MagicMock()
         ie_mod.extract_intent.return_value = _make_wiki_intent(
@@ -234,16 +235,15 @@ class TestWikiPipeline:
             hits=[_MockHit(title="t", snippet="요약")], total_count=1,
         )
         af_mod = MagicMock()
-        af_mod.format_summary_answer.return_value = "summary_text"
-
+        ask_claude_mock = MagicMock()
         result = pipeline(
             text="x \\ y", page_part="x", question="y",
             respond=MagicMock(), cache_mgr=MagicMock(),
             ie_mod=ie_mod, relax_mod=relax_mod, af_mod=af_mod,
-            ask_claude_fn=MagicMock(),
+            ask_claude_fn=ask_claude_mock,
         )
         assert result is True
-        af_mod.format_summary_answer.assert_called_once()
+        ask_claude_mock.assert_called_once()
 
     def test_T5c_content_search_uses_ask_claude(self):
         """T-5c: request_type=content_search → ask_claude_fn 호출 (format_*_answer 미호출)."""
@@ -385,7 +385,7 @@ class TestGdiPipeline:
         assert captured.get("domain") == "gdi"
 
     def test_T_gdi_metadata_formatter(self):
-        """gdi metadata path → format_metadata_answer 호출."""
+        """gdi metadata (PR1-K 시정): ask_claude_fn 우선 호출."""
         pipeline = self._import_pipeline()
         ie_mod = MagicMock()
         ie_mod.extract_intent.return_value = _make_gdi_intent(
@@ -396,16 +396,15 @@ class TestGdiPipeline:
             hits=[_MockHit(title="t", metadata={"ref_date": "2026-04-25"})], total_count=1,
         )
         af_mod = MagicMock()
-        af_mod.format_metadata_answer.return_value = "metadata"
-
+        ask_claude_mock = MagicMock()
         result = pipeline(
             text="x \\ y", folder="x", question="y",
             respond=MagicMock(), cache_mgr=MagicMock(),
             ie_mod=ie_mod, relax_mod=relax_mod, af_mod=af_mod,
-            ask_claude_fn=MagicMock(),
+            ask_claude_fn=ask_claude_mock,
         )
         assert result is True
-        af_mod.format_metadata_answer.assert_called_once()
+        ask_claude_mock.assert_called_once()  # PR1-K: ask_claude 우선
 
     def test_T_gdi_search_signature(self):
         """gdi search_with_ladder(cache_mgr, intent, "gdi") 인자 정합."""

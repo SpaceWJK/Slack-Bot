@@ -179,27 +179,29 @@ def run_wiki_intent_pipeline(
         )
         return True
 
-    # ── Stage 4: answer_formatter / ask_claude 분기 (M-1 시정) ──
+    # ── Stage 4: 모든 분기 통일 — ask_claude 자연어 합성 (PR1-K)
+    # 사용자 명시 결함: list/metadata가 단순 list만 노출 → 여러 번 입력 시 답변 퀄리티 저하 체감.
+    # 시정: 모든 분기에서 ask_claude_fn 우선 호출 (자연어 합성 + 통일 포맷).
+    # ask_claude_fn 없거나 실패 시 fallback으로 format_*_answer 사용.
     try:
-        if intent.request_type == "metadata":
-            respond(text=af_mod.format_metadata_answer(result.hits, intent, domain="wiki", raw_text=text))
-        elif intent.request_type == "list":
-            respond(text=af_mod.format_list_answer(result.hits, intent, domain="wiki", raw_text=text))
-        elif intent.request_type == "summary":
-            respond(text=af_mod.format_summary_answer(result.hits, intent, domain="wiki", raw_text=text))
-        else:  # content_search 또는 unknown
-            if ask_claude_fn is None:
-                logger.warning("[wiki/intent] content_search ask_claude_fn 미주입 → fallthrough")
-                return False
+        if ask_claude_fn is not None:
             context = hits_to_wiki_context(result.hits)
             ask_claude_fn(
-                page_title=page_part,
+                page_title=page_part or "(자연어 검색)",
                 page_text=context,
                 page_url="",
                 question=question,
                 respond=respond,
                 display_question=f"/wiki {text}",
             )
+        elif intent.request_type == "metadata":
+            respond(text=af_mod.format_metadata_answer(result.hits, intent, domain="wiki", raw_text=text))
+        elif intent.request_type == "list":
+            respond(text=af_mod.format_list_answer(result.hits, intent, domain="wiki", raw_text=text))
+        elif intent.request_type == "summary":
+            respond(text=af_mod.format_summary_answer(result.hits, intent, domain="wiki", raw_text=text))
+        else:
+            respond(text=af_mod.format_list_answer(result.hits, intent, domain="wiki", raw_text=text))
     except Exception as e:
         logger.warning(f"[wiki/intent] answer 분기 예외, fallthrough: {e}")
         return False
@@ -288,25 +290,27 @@ def run_gdi_intent_pipeline(
         )
         return True
 
+    # ── Stage 4: 모든 분기 통일 — ask_claude 자연어 합성 (PR1-K)
+    # 사용자 명시 결함: list/metadata가 단순 list만 노출 → 여러 번 입력 시 답변 퀄리티 저하 체감.
+    # 시정: 모든 분기에서 ask_claude_fn 우선 호출 (자연어 합성 + 통일 포맷).
     try:
-        if intent.request_type == "metadata":
+        if ask_claude_fn is not None:
+            context = hits_to_gdi_context(result.hits)
+            ask_claude_fn(
+                context_text=context,
+                source_label=folder or "(자연어 검색)",
+                question=question or text,
+                respond=respond,
+                display_question=f"/gdi {text}",
+            )
+        elif intent.request_type == "metadata":
             respond(text=af_mod.format_metadata_answer(result.hits, intent, domain="gdi", raw_text=text))
         elif intent.request_type == "list":
             respond(text=af_mod.format_list_answer(result.hits, intent, domain="gdi", raw_text=text))
         elif intent.request_type == "summary":
             respond(text=af_mod.format_summary_answer(result.hits, intent, domain="gdi", raw_text=text))
-        else:  # content_search
-            if ask_claude_fn is None:
-                logger.warning("[gdi/intent] content_search ask_claude_fn 미주입 → fallthrough")
-                return False
-            context = hits_to_gdi_context(result.hits)
-            ask_claude_fn(
-                context_text=context,
-                source_label=folder,
-                question=question,
-                respond=respond,
-                display_question=f"/gdi {text}",
-            )
+        else:
+            respond(text=af_mod.format_list_answer(result.hits, intent, domain="gdi", raw_text=text))
     except Exception as e:
         logger.warning(f"[gdi/intent] answer 분기 예외, fallthrough: {e}")
         return False
