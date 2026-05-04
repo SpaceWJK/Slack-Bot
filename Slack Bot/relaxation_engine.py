@@ -155,6 +155,7 @@ def _execute_query(cache_mgr, built) -> list:
     """BuiltQuery 실행 → row list (빈 list on error).
 
     task-129.7 LOW-1 시정: try/finally connection close 보장 (예외 시 누수 방지).
+    task-132 PR1-H: 동일 node_id 중복 결과 제거 (chunks_fts MATCH 시 한 파일이 여러 chunks 매칭).
     """
     import sqlite3
     db_path = cache_mgr.get_db_path()
@@ -165,7 +166,21 @@ def _execute_query(cache_mgr, built) -> list:
         conn = sqlite3.connect(db_path, timeout=5)
         conn.row_factory = sqlite3.Row
         rows = conn.execute(built.sql, built.params).fetchall()
-        return rows
+        # PR1-H: node_id 기준 dedup (첫 매칭 보존 — fts_rank/ref_date 정렬 이후이므로 best chunk)
+        seen_ids = set()
+        deduped = []
+        for r in rows:
+            try:
+                nid = r["node_id"]
+            except (KeyError, IndexError, TypeError):
+                deduped.append(r)
+                continue
+            if nid is not None and nid in seen_ids:
+                continue
+            if nid is not None:
+                seen_ids.add(nid)
+            deduped.append(r)
+        return deduped
     except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
         logger.warning("[relaxation_engine] 쿼리 실행 실패: %s", e)
         return []

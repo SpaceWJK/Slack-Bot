@@ -456,6 +456,30 @@ def build_gdi_query(intent) -> BuiltQuery:
         placeholders = ",".join("?" * len(intent.file_kind))
         where_clauses.append(f"n.file_kind IN ({placeholders})")
         params.extend(intent.file_kind)
+    else:
+        # task-132 PR1-C v2: tsv_policy SQL 강제 — Master 명시 정책
+        # "TSV 키워드 명시 시에만 탐색" (project_slack_bot_north_star.md §3).
+        # file_kind 명시 안 됐고 TSV 키워드 (path/body)도 없으면 TSV 자동 제외.
+        # 운영 발견: cache의 TSV 파일들이 file_kind=None으로 라벨링 부재 (19949건)
+        # → file_kind 컬럼만 의존하면 무용 → path 기반 추가 제외 (LOWER(path) LIKE '%/tsv/%').
+        path_lower = " ".join(s for s in cleaned_segs if isinstance(s, str)).lower() if cleaned_segs else ""
+        body_kw = getattr(intent, "body_keywords", []) or []
+        body_lower = " ".join(s for s in body_kw if isinstance(s, str)).lower() if body_kw else ""
+        if "tsv" not in (path_lower + " " + body_lower):
+            where_clauses.append("(n.file_kind IS NULL OR n.file_kind != 'tsv')")
+            where_clauses.append("LOWER(n.path) NOT LIKE '%/tsv/%'")
+
+        # task-132 PR1-C v3 (Step 6 시정): BAT/SDK 노이즈 path 기반 자동 제외
+        # cache file_kind 라벨링 부재 보완. title 기반 필터는 false positive 위험 (combat/rebate 등)
+        # → path 기반 (예: '%/bat/%' 또는 '%bat_result%')으로 정밀화.
+        # qa-structural MAJOR-1: title %bat_% → path %bat_result% 교체.
+        # qa-structural MAJOR-2: checklist는 update_checklist file_kind 충돌 위험으로 제외 (body_kw 통과)
+        combined_lower = path_lower + " " + body_lower
+        if "bat" not in combined_lower and "sdk" not in combined_lower:
+            where_clauses.append("LOWER(n.title) NOT LIKE '%bat_result%'")
+            where_clauses.append("LOWER(n.title) NOT LIKE '%bat_%.xlsx'")
+            where_clauses.append("LOWER(n.title) NOT LIKE '%sdk_%'")
+            where_clauses.append("LOWER(n.title) NOT LIKE '%stove sdk%'")
 
     # ref_date 필터 (MAJOR-NEW-5: _next_day)
     if intent.ref_date_from:

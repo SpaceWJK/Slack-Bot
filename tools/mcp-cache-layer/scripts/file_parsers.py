@@ -1939,8 +1939,13 @@ def parse_html(file_path: str, *, extract_images: bool = True,
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _safe_filename(name: str) -> str:
-    """파일명에서 위험한 문자를 제거한다."""
-    return re.sub(r'[<>:"/\\|?*]', "_", name)
+    """파일명에서 위험한 문자를 제거한다.
+
+    M-1 (task-128 carryover): 점 연속(`..`) 필터링으로 path traversal 방어.
+    """
+    cleaned = re.sub(r'[<>:"/\\|?*]', "_", name)
+    cleaned = re.sub(r'\.{2,}', "_", cleaned)
+    return cleaned or "_"
 
 
 # ── CLI 테스트 ────────────────────────────────────────────────────────────────

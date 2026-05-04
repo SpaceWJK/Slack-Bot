@@ -139,11 +139,23 @@ def run_wiki_intent_pipeline(
     try:
         intent = ie_mod.extract_intent(text, domain="wiki")
     except Exception as e:
-        logger.warning(f"[wiki/intent] extract_intent 예외, fallthrough: {e}")
-        return False
+        logger.warning(f"[wiki/intent] extract_intent 예외: {e}")
+        intent = None
 
+    # task-132 PR1-B: ai_failed → grep fallthrough 제거
+    # 사용자 5건 운영 실패 RCA: timeout/markdown 파싱 실패 시 grep fallback이 task-129
+    # 4단계 파이프라인을 우회 → 운영 0% 동작. 명시 안내 + return True (fallthrough 차단).
     if intent is None or intent.ai_failed:
-        return False
+        respond(text=(
+            "⚠️ 질문 의도 분석에 실패했습니다.\n"
+            "다음 형식으로 다시 시도해주세요:\n"
+            "  • metadata: `/wiki <페이지> 마지막 수정일?`\n"
+            "  • list: `/wiki <기간> 업데이트된 페이지`\n"
+            "  • content: `/wiki <키워드> 관련 자료`\n"
+            "_(Stage 1 Intent 추출 실패 — Claude API timeout 또는 응답 파싱 오류)_"
+        ))
+        logger.warning(f"[wiki/intent] ai_failed 명시 안내 (text_len={len(text)})")
+        return True
 
     # ── search_with_ladder ──
     try:
@@ -240,11 +252,21 @@ def run_gdi_intent_pipeline(
     try:
         intent = ie_mod.extract_intent(text, domain="gdi")
     except Exception as e:
-        logger.warning(f"[gdi/intent] extract_intent 예외, fallthrough: {e}")
-        return False
+        logger.warning(f"[gdi/intent] extract_intent 예외: {e}")
+        intent = None
 
+    # task-132 PR1-B: ai_failed → grep fallthrough 제거 (gdi domain)
     if intent is None or intent.ai_failed:
-        return False
+        respond(text=(
+            "⚠️ 질문 의도 분석에 실패했습니다.\n"
+            "다음 형식으로 다시 시도해주세요:\n"
+            "  • content: `/gdi <게임> \\ <키워드>`\n"
+            "  • list: `/gdi <게임> \\ 패치노트 \\ <기간>`\n"
+            "  • metadata: `/gdi <파일명> 마지막 수정일?`\n"
+            "_(Stage 1 Intent 추출 실패 — Claude API timeout 또는 응답 파싱 오류)_"
+        ))
+        logger.warning(f"[gdi/intent] ai_failed 명시 안내 (text_len={len(text)})")
+        return True
 
     try:
         t0 = time.time()

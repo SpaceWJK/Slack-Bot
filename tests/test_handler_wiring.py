@@ -127,22 +127,32 @@ class TestWikiPipeline:
         )
         assert captured.get("domain") == "wiki"
 
-    def test_T3_ai_failed_returns_false_for_fallthrough(self):
-        """T-3: intent.ai_failed=True → pipeline False 반환 (fallthrough)."""
+    def test_T3_ai_failed_returns_true_with_explicit_message(self):
+        """T-3 (task-132 PR1-B 시정): intent.ai_failed=True → 명시 안내 + return True.
+
+        이전 동작 (fallthrough=False)은 사용자 5건 운영 실패 RCA에서 task-129 4단계
+        파이프라인을 grep fallback으로 우회하던 회귀 근본 원인. 시정으로 fallthrough 차단.
+        """
         pipeline = self._import_pipeline()
         ie_mod = MagicMock()
         ie_mod.extract_intent.return_value = _make_wiki_intent(ai_failed=True)
         relax_mod = MagicMock()
         af_mod = MagicMock()
+        respond_mock = MagicMock()
 
         result = pipeline(
             text="x \\ y", page_part="x", question="y",
-            respond=MagicMock(), cache_mgr=MagicMock(),
+            respond=respond_mock, cache_mgr=MagicMock(),
             ie_mod=ie_mod, relax_mod=relax_mod, af_mod=af_mod,
             ask_claude_fn=MagicMock(),
         )
-        assert result is False, "T-3 FAIL: ai_failed 시 fallthrough(False) 반환 의무"
+        assert result is True, "T-3 (task-132 시정): ai_failed 시 명시 안내 + True 반환"
         relax_mod.search_with_ladder.assert_not_called()
+        # 명시 안내 메시지 발송 검증
+        respond_mock.assert_called_once()
+        call_kwargs = respond_mock.call_args.kwargs
+        assert "Intent" in call_kwargs.get("text", "") or "의도" in call_kwargs.get("text", ""), \
+            "T-3 FAIL: ai_failed 시 명시 안내 텍스트 누락"
 
     def test_T3b_cache_none_returns_false_for_fallthrough(self):
         """T-3b: cache_mgr=None → False 반환 (fallthrough)."""

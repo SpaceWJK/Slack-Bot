@@ -1,10 +1,9 @@
 """
-answer_formatter.py — 검색 결과 답변 포맷터 (task-129 S4-E)
+answer_formatter.py — 검색 결과 답변 포맷터 (task-129 S4-E + task-132 PR2 포맷 통일)
 
-설계 v4 §6.2 정합:
-- format_metadata_answer: KST 변환 + silent NULL 차단
-- format_list_answer: 제목 목록
-- format_summary_answer: 요약 텍스트
+설계 v4 §6.2 + task-132 사용자 명시 요구:
+- 모든 답변은 통일 포맷: 📋 질문 / 💬 답변 / 🔗 근거 / 📌 출처
+- format_metadata_answer / format_list_answer / format_summary_answer 모두 동일 구조
 """
 
 import logging
@@ -28,73 +27,137 @@ def _to_kst(dt_str: Optional[str]) -> str:
         return dt_str or "정보 없음"
 
 
+def _question_text(intent) -> str:
+    """intent에서 사용자 원본 질문 복원 (path_segments 또는 keywords 조합)."""
+    parts = []
+    # gdi: path_segments / wiki: page_path_segments
+    segs = (
+        getattr(intent, "path_segments", None)
+        or getattr(intent, "page_path_segments", None)
+        or []
+    )
+    if segs:
+        parts.extend([str(s).strip() for s in segs if s])
+    keywords = (
+        getattr(intent, "body_keywords", None)
+        or getattr(intent, "title_keywords", None)
+        or []
+    )
+    if keywords:
+        parts.extend([str(k).strip() for k in keywords if k])
+    return " ".join(parts) if parts else "(요청 내용)"
+
+
+def _source_text(intent, domain: str) -> str:
+    """출처 표시 (GDI · 게임명 / Wiki · space)."""
+    if domain == "wiki":
+        space = getattr(intent, "space_key", None) or "QASGP"
+        return f"Wiki · {space}"
+    # gdi
+    games = getattr(intent, "game_alias_kr", []) or []
+    if games:
+        return f"GDI · {games[0]}"
+    return "GDI"
+
+
+def _build_unified(question: str, answer: str, grounds: list, source: str) -> str:
+    """통일 답변 포맷: 📋 질문 / 💬 답변 / 🔗 근거 / 📌 출처."""
+    lines = [
+        "📋 *질문*",
+        question,
+        "",
+        "💬 *답변*",
+        answer,
+    ]
+    if grounds:
+        lines.extend(["", "🔗 *근거*"])
+        lines.extend(grounds)
+    lines.extend(["", "📌 *출처*", source])
+    return "\n".join(lines)
+
+
 def format_metadata_answer(hits: list, intent, domain: str = "wiki") -> str:
-    """metadata 경로 답변 포맷 (KST + silent NULL 차단).
+    """metadata 경로 답변 포맷 — 통일 포맷 (📋💬🔗📌)."""
+    question = _question_text(intent)
+    source = _source_text(intent, domain)
 
-    빈 결과 시 "찾을 수 없습니다" 반환 (None/빈 문자열 금지).
-    """
     if not hits:
-        return "요청하신 정보를 찾을 수 없습니다."
+        return _build_unified(question, "요청하신 정보를 찾을 수 없습니다.", [], source)
 
-    lines = []
+    grounds = []
+    answer_parts = []
     for hit in hits[:5]:
         meta = hit.metadata if hasattr(hit, "metadata") else {}
         title = hit.title if hasattr(hit, "title") else "제목 없음"
-        lines.append(f"• *{title}*")
-
         last_modified = meta.get("last_modified")
         ref_date = meta.get("ref_date")
-        if last_modified:
-            lines.append(f"  최근 수정: {_to_kst(last_modified)}")
-        if ref_date:
-            lines.append(f"  ref_date: {ref_date}")
-
-        # MEDIUM-3: cache backfill 안내 (last_modified/ref_date 둘 다 없을 때)
-        if not last_modified and not ref_date:
-            lines.append("  ⚠️ 원본 메타 미적재 (cache backfill 필요)")
-
         path = meta.get("path", "")
-        if path:
-            lines.append(f"  경로: {path}")
 
-    return "\n".join(lines) if lines else "요청하신 정보를 찾을 수 없습니다."
+        # answer 첫 hit 메타 발췌
+        if not answer_parts:
+            mf = getattr(intent, "metadata_field", None) or "last_modified"
+            if mf == "last_modified" and last_modified:
+                answer_parts.append(f"*{title}* — 최근 수정: {_to_kst(last_modified)}")
+            elif mf == "ref_date" and ref_date:
+                answer_parts.append(f"*{title}* — ref_date: {ref_date}")
+            elif last_modified:
+                answer_parts.append(f"*{title}* — 최근 수정: {_to_kst(last_modified)}")
+            else:
+                answer_parts.append(f"*{title}* — 메타 정보 없음 (cache backfill 필요)")
+
+        # 근거: 모든 hit
+        line = f"- {title}"
+        if last_modified:
+            line += f" (최근 수정: {_to_kst(last_modified)})"
+        if path:
+            line += f"\n  경로: {path}"
+        grounds.append(line)
+
+    answer = "\n".join(answer_parts) or "메타 정보를 찾을 수 없습니다."
+    return _build_unified(question, answer, grounds, source)
 
 
 def format_list_answer(hits: list, intent, domain: str = "wiki") -> str:
-    """list 경로 답변 포맷 (제목 목록)."""
-    if not hits:
-        return "조건에 맞는 항목을 찾을 수 없습니다."
+    """list 경로 답변 포맷 — 통일 포맷 (📋💬🔗📌)."""
+    question = _question_text(intent)
+    source = _source_text(intent, domain)
 
-    lines = [f"검색 결과 {len(hits)}건:"]
+    if not hits:
+        return _build_unified(question, "조건에 맞는 항목을 찾을 수 없습니다.", [], source)
+
+    answer = f"검색 결과 {len(hits)}건의 파일이 있습니다."
+    grounds = []
     for i, hit in enumerate(hits[:10], 1):
         title = hit.title if hasattr(hit, "title") else "제목 없음"
         meta = hit.metadata if hasattr(hit, "metadata") else {}
         ref_date = meta.get("ref_date", "")
         last_modified = meta.get("last_modified", "")
-
         date_info = ""
         if ref_date:
             date_info = f" ({ref_date})"
         elif last_modified:
             date_info = f" ({_to_kst(last_modified)})"
+        grounds.append(f"{i}. {title}{date_info}")
 
-        lines.append(f"{i}. {title}{date_info}")
-
-    return "\n".join(lines)
+    return _build_unified(question, answer, grounds, source)
 
 
 def format_summary_answer(hits: list, intent, domain: str = "wiki") -> str:
-    """summary 경로 답변 포맷 (snippet 기반 요약)."""
-    if not hits:
-        return "요약할 내용을 찾을 수 없습니다."
+    """summary 경로 답변 포맷 — 통일 포맷 (📋💬🔗📌)."""
+    question = _question_text(intent)
+    source = _source_text(intent, domain)
 
-    lines = []
+    if not hits:
+        return _build_unified(question, "요약할 내용을 찾을 수 없습니다.", [], source)
+
+    grounds = []
+    answer_parts = []
     for hit in hits[:3]:
         title = hit.title if hasattr(hit, "title") else "제목 없음"
         snippet = hit.snippet if hasattr(hit, "snippet") else ""
-        lines.append(f"*{title}*")
         if snippet:
-            lines.append(snippet[:300])
-        lines.append("")
+            answer_parts.append(f"*{title}*\n{snippet[:300]}")
+        grounds.append(f"- {title}")
 
-    return "\n".join(lines).strip() or "요약할 내용을 찾을 수 없습니다."
+    answer = "\n\n".join(answer_parts) or "요약할 내용을 찾을 수 없습니다."
+    return _build_unified(question, answer, grounds, source)

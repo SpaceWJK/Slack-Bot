@@ -1525,32 +1525,36 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
                 respond(text="❌ 검색어를 입력하세요. 예: `/wiki search QA 일정`")
             return
 
-        # "\" 구분자 → [경로/페이지 제목] \ [질문] 으로 Claude AI 답변
+        # task-132 PR1-E: 자연어 직접 입력도 4단계 파이프라인 우선 진입 (wiring 결함 시정)
+        # 이전: "\\" 있을 때만 4단계 진입 → C2 "/wiki 4월 27~29일 업데이트된 페이지" 같은
+        # 자연어는 기존 CQL 제목 검색 fallback으로 처리되어 task-129 4단계 무용.
+        # 시정: "\\" 유무 무관하게 쓰기 차단 후 4단계 시도. False(예외/cache=None) 시만 fallback.
+        _np_page_part, _, _np_question = text.partition("\\") if "\\" in text else ("", "", text)
+        _np_page_part = _np_page_part.strip()
+        _np_question = _np_question.strip()
+        if _np_question:
+            _np_write_kw = detect_write_intent(_np_question)
+            if _np_write_kw:
+                respond(text=format_block_message(_np_write_kw))
+                return
+            if ip.run_wiki_intent_pipeline(
+                text=text, page_part=_np_page_part, question=_np_question,
+                respond=respond, cache_mgr=wc._wiki_cache,
+                ask_claude_fn=_wiki_ask_claude,
+            ):
+                wc.log_wiki_query(
+                    user_id=user_id, user_name=user_name,
+                    action="ask_claude_intent", query=text,
+                    result="intent_pipeline",
+                )
+                return
+
+        # 4단계 False 반환 시 기존 fallback (page_part \\ question 분기)
         if "\\" in text:
             page_part, _, question = text.partition("\\")
             page_part = page_part.strip()
             question  = question.strip()
             if page_part and question:
-                # ── 쓰기 의도 차단 ─────────────────────────────────────
-                write_kw = detect_write_intent(question)
-                if write_kw:
-                    respond(text=format_block_message(write_kw))
-                    return
-
-                # ── task-129.5: 4단계 파이프라인 진입 시도 ──
-                # ai_failed=True / cache=None / 예외 → False (기존 흐름 fallthrough)
-                # 정상 처리 (응답 전송 또는 0건) → True (return)
-                if ip.run_wiki_intent_pipeline(
-                    text=text, page_part=page_part, question=question,
-                    respond=respond, cache_mgr=wc._wiki_cache,
-                    ask_claude_fn=_wiki_ask_claude,
-                ):
-                    wc.log_wiki_query(
-                        user_id=user_id, user_name=user_name,
-                        action="ask_claude_intent", query=text,
-                        result="intent_pipeline",
-                    )
-                    return
 
                 t0 = time.time()
                 # ── 페이지별 예외처리 규칙 확인 ──────────────────────────────

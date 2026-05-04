@@ -189,25 +189,30 @@ class TestGdiSchema:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestStrictValidator:
-    """T-8: _validate_against_schema — unknown field reject."""
+    """T-8 (task-132 PR1-D 시정): _validate_against_schema — unknown field tolerant.
 
-    def test_T8_unknown_field_raises_or_returns_error(self):
-        """T-8: AI가 schema에 없는 필드 반환 시 validate에서 거부 (ai_failed=True)."""
+    이전 strict reject 동작은 Claude haiku의 `schema_version`/`domain`/`fields` 등
+    메타 필드 자동 추가를 ai_failed로 처리해 사용자 5건 운영 0% 직접 원인이 됨.
+    시정: unknown field를 drop 후 정상 진행 (강한 거부 → 관대한 무시).
+    """
+
+    def test_T8_unknown_field_drop_and_continue(self):
+        """T-8 (시정): unknown field가 있어도 drop 후 정상 intent 반환."""
         try:
             _validate = _import_validator()
         except (ImportError, AttributeError):
-            pytest.fail("T-8 FAIL: _validate_against_schema import 실패 — Red")
+            pytest.fail("T-8 FAIL: _validate_against_schema import 실패")
 
-        # 알 수 없는 필드 포함
         raw_json = {
             "request_type": "content_search",
-            "unknown_field_xyz": "should be rejected",  # schema에 없는 필드
+            "schema_version": "1.0",  # Claude가 자주 추가하는 메타 필드
+            "domain": "wiki",
+            "unknown_field_xyz": "should be dropped, not rejected",
         }
         result = _validate(raw_json, domain="wiki")
-        # 검증 실패 → None 반환 또는 예외
-        assert result is None or (hasattr(result, "ai_failed") and result.ai_failed), (
-            f"T-8 FAIL: unknown field가 통과됨 (기대: reject). result={result!r}"
-        )
+        assert result is not None, "T-8 (시정) FAIL: unknown field가 drop되지 않고 reject됨"
+        assert not getattr(result, "ai_failed", False), \
+            "T-8 (시정) FAIL: unknown field로 ai_failed 처리됨"
 
     def test_T8_valid_intent_passes_validation(self):
         """T-8 회귀: 정상 intent는 통과."""
@@ -222,24 +227,23 @@ class TestStrictValidator:
             "ai_failed": False,
         }
         result = _validate(valid_json, domain="wiki")
-        # 정상이면 None이 아님
         assert result is not None, "T-8 회귀 FAIL: 정상 intent가 reject됨"
 
-    def test_T8_reject_unknown_fields_gdi(self):
-        """T-8 gdi 도메인에서도 unknown field reject."""
+    def test_T8_unknown_field_drop_gdi(self):
+        """T-8 gdi 도메인에서도 unknown field drop."""
         try:
             _validate = _import_validator()
         except (ImportError, AttributeError):
-            pytest.fail("T-8 FAIL: _validate_against_schema import 실패 — Red")
+            pytest.fail("T-8 FAIL: _validate_against_schema import 실패")
 
         raw_json = {
             "request_type": "list",
             "hallucinated_field": 42,
+            "schema_version": "1.0",
         }
         result = _validate(raw_json, domain="gdi")
-        assert result is None or (hasattr(result, "ai_failed") and result.ai_failed), (
-            f"T-8 FAIL: gdi unknown field 통과됨. result={result!r}"
-        )
+        assert result is not None, "T-8 (시정) FAIL: gdi unknown field로 reject됨"
+        assert not getattr(result, "ai_failed", False)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
