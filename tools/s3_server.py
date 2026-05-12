@@ -3308,18 +3308,18 @@ def main():
 
     parser = argparse.ArgumentParser(description="GDI S3 File Manager")
     parser.add_argument("--port", type=int, default=9090)
-    parser.add_argument("--silent", action="store_true", help="브라우저 자동 열기 비활성화")
+    # --silent: deprecated (ISS-012 v3 + task-132 정공법 fix, 2026-05-12).
+    # webbrowser.open 호출 자체를 제거. backward compat 위해 플래그는 유지 (no-op).
+    # 과거 사고: pm2 restart loop × webbrowser.open 호출 = Chrome 탭 4029개 → PC 마비.
+    parser.add_argument("--silent", action="store_true",
+                        help="(deprecated) 자동 열기 기능 제거됨. 플래그는 backward compat 용으로만 유지.")
     args = parser.parse_args()
 
     server = http.server.ThreadingHTTPServer(("0.0.0.0", args.port), ProxyHandler)
     print(f"GDI S3 File Manager -> http://localhost:{args.port}/s3_manager.html")
     print(f"GDI API proxy       -> http://localhost:{args.port}/api/*")
-
-    if not args.silent:
-        import webbrowser
-        webbrowser.open(f"http://localhost:{args.port}/s3_manager.html")
-    else:
-        print("Silent mode - browser not opened")
+    # 브라우저 자동 열기 제거 (4029회 사고 root cause).
+    # 개발자는 위 URL을 수동 클릭/복사하여 접속.
 
     try:
         server.serve_forever()
