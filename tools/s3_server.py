@@ -26,9 +26,14 @@ import time
 try:
     import boto3
     from botocore.config import Config as _BotoConfig
-    _S3_CLIENT = boto3.client("s3", region_name="ap-northeast-2", config=_BotoConfig(
-        connect_timeout=5, read_timeout=10, retries={"max_attempts": 2}
-    ))
+    # SSL 인증서 경로 자동 탐색 — 사내 프록시/방화벽 환경 대응
+    # SSL 검증 비활성화 — 사내망 프록시/방화벽 환경에서 인증서 검증 불가 (ISS-016)
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    _S3_CLIENT = boto3.client("s3", region_name="ap-northeast-2",
+        config=_BotoConfig(connect_timeout=5, read_timeout=10, retries={"max_attempts": 2}),
+        verify=False,
+    )
     _S3_BUCKET = "game-doc-insight-resource"
     _S3_AVAILABLE = True
 except ImportError:
@@ -138,6 +143,15 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
     # ── API proxy ───────────────────────────────────────────
     def do_GET(self):
+        # 모든 HTML 페이지 서빙을 가장 먼저 처리 (SimpleHTTPRequestHandler 우회)
+        clean_path = self.path.split("?")[0]
+        if clean_path in ("/", "/s3_manager.html"):
+            self._serve_manager_page()
+            return
+        if clean_path == "/s3_admin.html":
+            self._serve_admin_page()
+            return
+
         if self.path == "/api/dashboard":
             self._handle_dashboard()
         elif self.path == "/api/ops-metrics":
@@ -148,10 +162,6 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self._handle_brain_metrics()
         elif self.path == "/api/claude-metrics":
             self._handle_claude_metrics()
-        elif self.path == "/s3_admin.html":
-            self._serve_admin_page()
-        elif self.path.split("?")[0] in ("/", "/s3_manager.html"):
-            self._serve_manager_page()
         elif self.path == "/api/count":
             self._handle_count()
         elif self.path.startswith("/api/s3-list"):
@@ -197,17 +207,29 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
     # ── User page ──────────────────────────────────────────────
     def _serve_manager_page(self):
-        """s3_manager.html 서빙. 브라우저 캐시 무효화로 항상 최신 버전 표시."""
+        """s3_manager.html 서빙. 브라우저/프록시 캐시 강제 무효화."""
         try:
             html_path = os.path.join(STATIC_DIR, "s3_manager.html")
+            mtime = os.path.getmtime(html_path)
+            etag = f'"{int(mtime)}-{os.path.getsize(html_path)}"'
             with open(html_path, "r", encoding="utf-8") as f:
-                data = f.read().encode("utf-8")
+                html = f.read()
+            # HTML 내부에도 캐시 무효화 meta 삽입 (프록시 우회)
+            cache_meta = (
+                '<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">'
+                '<meta http-equiv="pragma" content="no-cache">'
+                '<meta http-equiv="expires" content="0">'
+            )
+            html = html.replace("<head>", f"<head>\n{cache_meta}", 1)
+            data = html.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", len(data))
-            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
             self.send_header("Pragma", "no-cache")
             self.send_header("Expires", "0")
+            self.send_header("ETag", etag)
+            self.send_header("Vary", "*")
             self._cors_headers()
             self.end_headers()
             self.wfile.write(data)
@@ -246,13 +268,15 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
 
     # ── Admin page ─────────────────────────────────────────────
     def _serve_admin_page(self):
-        """s3_admin.html 물리 파일 서빙. 없으면 s3_manager.html에 config 주입."""
+        """s3_admin.html 물리 파일 서빙. 브라우저/프록시 캐시 강제 무효화."""
         try:
             # 1차: 물리 파일 s3_admin.html 존재 시 직접 서빙
             admin_path = os.path.join(STATIC_DIR, "s3_admin.html")
             if os.path.exists(admin_path):
                 with open(admin_path, "r", encoding="utf-8") as f:
                     html = f.read()
+                mtime = os.path.getmtime(admin_path)
+                fsize = os.path.getsize(admin_path)
             else:
                 # 2차: s3_manager.html에 config injection (폴백)
                 html_path = os.path.join(STATIC_DIR, "s3_manager.html")
@@ -265,11 +289,27 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                     '</script>'
                 )
                 html = html.replace("<head>", f"<head>\n{config_script}", 1)
+                mtime = os.path.getmtime(html_path)
+                fsize = os.path.getsize(html_path)
+
+            # 캐시 무효화 meta 삽입
+            cache_meta = (
+                '<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">'
+                '<meta http-equiv="pragma" content="no-cache">'
+                '<meta http-equiv="expires" content="0">'
+            )
+            html = html.replace("<head>", f"<head>\n{cache_meta}", 1)
+            etag = f'"{int(mtime)}-{fsize}"'
 
             data = html.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", len(data))
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
+            self.send_header("ETag", etag)
+            self.send_header("Vary", "*")
             self._cors_headers()
             self.end_headers()
             self.wfile.write(data)
@@ -1963,6 +2003,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", len(body))
+        self.send_header("Cache-Control", "no-cache, no-store")
         self._cors_headers()
         self.end_headers()
         self.wfile.write(body)
@@ -2046,6 +2087,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         body = json.dumps({"error": msg}).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
+        self.send_header("Cache-Control", "no-cache, no-store")
         self._cors_headers()
         self.end_headers()
         self.wfile.write(body)
