@@ -22,6 +22,7 @@ config['monitor_alert_channel'] 채널에 알림 메시지로 발송합니다.
 """
 
 import json
+import calendar
 import logging
 import os
 from datetime import datetime, timedelta
@@ -132,11 +133,25 @@ def should_fire_today(schedule: dict) -> bool:
     if stype in ("daily", "mission"):
         return weekday < 5   # 평일만
 
-    if stype in ("weekly", "monthly_last_weekday"):
+    if stype == "weekly":
         raw   = schedule.get("day_of_week", "")
         abbr  = _DAY_ABBR_MAP.get(raw.lower().strip(), "")
         target_wd = _DAY_WD_IDX.get(abbr, -1)
         return weekday == target_wd
+
+    if stype == "monthly_last_weekday":
+        raw   = schedule.get("day_of_week", "")
+        abbr  = _DAY_ABBR_MAP.get(raw.lower().strip(), "")
+        target_wd = _DAY_WD_IDX.get(abbr, -1)
+        if weekday != target_wd:
+            return False
+        # 이번 달의 마지막 해당 요일인지 추가 확인
+        cal_month = calendar.monthcalendar(today.year, today.month)
+        last_day = 0
+        for week in cal_month:
+            if week[target_wd] != 0:
+                last_day = week[target_wd]
+        return today.day == last_day
 
     if stype in ("biweekly", "nweekly"):
         raw   = schedule.get("day_of_week", "")
