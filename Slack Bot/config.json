@@ -535,14 +535,15 @@
       "channel": "C0AJNHQ74TU",
       "mission": {
         "mission_number": "M-04",
-        "name": "미정",
-        "target_date": "",
+        "name": "밸런스 QA 고도화",
+        "target_date": "2026-06-26",
         "channel_name": "Balance Engineering",
         "sub_tasks": [
-          "미정",
-          "미정",
-          "미정"
-        ]
+          "에픽/카제나 상시 밸런스 테스트 프로세스 설계",
+          "공동 프로세스 설계 (장르별)",
+          "밸런스 QA의 데이터화 / 데이터의 지표화"
+        ],
+        "start_date": "2026-05-06"
       }
     },
     {
