@@ -94,3 +94,59 @@ class TestMonthlyLastWeekdayFireToday:
             mock_dt.now.return_value = _kst(2026, 5, 15)  # 금요일
             mock_dt.strptime.side_effect = datetime.strptime
             assert sm.should_fire_today(weekly_sched) is True
+
+
+NTH_SCHEDULE = {
+    "id": "monthly-qa-checklist",
+    "type": "monthly_nth_weekday",
+    "day_of_week": "friday",
+    "weeks": [2, 4],
+    "time": "09:45",
+}
+
+
+class TestMonthlyNthWeekdayFireToday:
+    """should_fire_today — monthly_nth_weekday 타입 (2주차+4주차)"""
+
+    # 2026년 5월: 금요일 = 1일, 8일, 15일, 22일, 29일
+    def test_2nd_friday_returns_true(self):
+        """5월 8일(2주차 금): True."""
+        assert _call_nth(_kst(2026, 5, 8)) is True
+
+    def test_3rd_friday_returns_false(self):
+        """5월 15일(3주차 금): False."""
+        assert _call_nth(_kst(2026, 5, 15)) is False
+
+    def test_4th_friday_returns_true(self):
+        """5월 22일(4주차 금): True."""
+        assert _call_nth(_kst(2026, 5, 22)) is True
+
+    def test_5th_friday_returns_false(self):
+        """5월 29일(5주차 금 = 마지막이지만 5주차): False."""
+        assert _call_nth(_kst(2026, 5, 29)) is False
+
+    # 6월: 금요일 = 5일, 12일, 19일, 26일
+    def test_june_2nd_friday(self):
+        """6월 12일(2주차 금): True."""
+        assert _call_nth(_kst(2026, 6, 12)) is True
+
+    def test_june_4th_friday(self):
+        """6월 26일(4주차 금): True."""
+        assert _call_nth(_kst(2026, 6, 26)) is True
+
+    def test_june_1st_friday_returns_false(self):
+        """6월 5일(1주차 금): False."""
+        assert _call_nth(_kst(2026, 6, 5)) is False
+
+    def test_non_friday_returns_false(self):
+        """5월 21일(목): False."""
+        assert _call_nth(_kst(2026, 5, 21)) is False
+
+
+def _call_nth(fake_now: datetime) -> bool:
+    """monthly_nth_weekday 스케줄로 should_fire_today 호출."""
+    import schedule_monitor as sm
+    with patch.object(sm, "datetime", wraps=sm.datetime) as mock_dt:
+        mock_dt.now.return_value = fake_now
+        mock_dt.strptime.side_effect = datetime.strptime
+        return sm.should_fire_today(NTH_SCHEDULE)

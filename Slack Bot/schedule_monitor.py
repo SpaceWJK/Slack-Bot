@@ -153,6 +153,23 @@ def should_fire_today(schedule: dict) -> bool:
                 last_day = week[target_wd]
         return today.day == last_day
 
+    if stype == "monthly_nth_weekday":
+        raw   = schedule.get("day_of_week", "")
+        abbr  = _DAY_ABBR_MAP.get(raw.lower().strip(), "")
+        target_wd = _DAY_WD_IDX.get(abbr, -1)
+        if weekday != target_wd:
+            return False
+        weeks = schedule.get("weeks", [])
+        cal_month = calendar.monthcalendar(today.year, today.month)
+        for n in weeks:
+            count = 0
+            for week in cal_month:
+                if week[target_wd] != 0:
+                    count += 1
+                    if count == n and today.day == week[target_wd]:
+                        return True
+        return False
+
     if stype in ("biweekly", "nweekly"):
         raw   = schedule.get("day_of_week", "")
         abbr  = _DAY_ABBR_MAP.get(raw.lower().strip(), "")

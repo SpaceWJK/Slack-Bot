@@ -1,39 +1,62 @@
 {
   "timezone": "Asia/Seoul",
-
   "jira_intents": {
     "status_synonyms": {
-      "미해결": ["Open", "In Progress", "Reopened"],
-      "진행중": ["In Progress"],
-      "완료": ["Done", "Closed", "Resolved"],
-      "열린": ["Open", "Reopened"],
-      "닫힌": ["Done", "Closed", "Resolved"]
+      "미해결": [
+        "Open",
+        "In Progress",
+        "Reopened"
+      ],
+      "진행중": [
+        "In Progress"
+      ],
+      "완료": [
+        "Done",
+        "Closed",
+        "Resolved"
+      ],
+      "열린": [
+        "Open",
+        "Reopened"
+      ],
+      "닫힌": [
+        "Done",
+        "Closed",
+        "Resolved"
+      ]
     },
     "priority_synonyms": {
-      "높음": ["High", "Highest", "Critical", "Blocker"],
-      "낮음": ["Low", "Lowest", "Trivial"],
-      "긴급": ["Highest", "Critical", "Blocker"]
+      "높음": [
+        "High",
+        "Highest",
+        "Critical",
+        "Blocker"
+      ],
+      "낮음": [
+        "Low",
+        "Lowest",
+        "Trivial"
+      ],
+      "긴급": [
+        "Highest",
+        "Critical",
+        "Blocker"
+      ]
     }
   },
-
-
   "monitor_alert_channel": "C0AKPGBSY7K",
-
   "user_map": {
     "U07H17HB4MD": "이동현",
     "U07HFLMSYKV": "류석호",
     "U07H18AD1L7": "정예찬",
     "U07HJ9JD31A": "박준선D"
   },
-
   "schedules": [
-
     {
       "id": "monthly-qa-checklist",
       "name": "퍼블리싱QA1팀 월간 체크리스트",
       "enabled": true,
-      "type": "monthly_last_weekday",
-      "day_of_week": "friday",
+      "type": "monthly_nth_weekday",
       "time": "09:45",
       "channel": "C07PHCE4RCM",
       "message_type": "interactive_checklist",
@@ -43,41 +66,88 @@
           "type": "group",
           "group_name": "[각 프로젝트] 프로젝트 월간 캘린더 최신화",
           "sub_items": [
-            {"value": "m0_epic7",  "text": "[에픽세븐]", "mentions": ["U07H17HB4MD"]},
-            {"value": "m0_cazena", "text": "[카제나]",   "mentions": ["U07HFLMSYKV"]}
+            {
+              "value": "m0_epic7",
+              "text": "[에픽세븐]",
+              "mentions": [
+                "U07H17HB4MD"
+              ]
+            },
+            {
+              "value": "m0_cazena",
+              "text": "[카제나]",
+              "mentions": [
+                "U07HFLMSYKV"
+              ]
+            }
           ]
         },
         {
           "value": "m1_vacation",
           "text": "휴가 계획 조사",
-          "mentions": ["U07HFLMSYKV"]
+          "mentions": [
+            "U07HFLMSYKV"
+          ]
         },
         {
           "value": "m2_meeting",
           "text": "업무 고도화 미팅",
-          "mentions": ["U07HFLMSYKV", "U07H17HB4MD", "U07H18AD1L7", "U07HJ9JD31A"]
+          "mentions": [
+            "U07HFLMSYKV",
+            "U07H17HB4MD",
+            "U07H18AD1L7",
+            "U07HJ9JD31A"
+          ]
         },
         {
           "type": "group",
           "group_name": "[각 프로젝트] Monthly QA Report 최신화",
           "sub_items": [
-            {"value": "m3_epic7",  "text": "[에픽세븐]", "mentions": ["U07H17HB4MD"]},
-            {"value": "m3_cazena", "text": "[카제나]",   "mentions": ["U07HFLMSYKV"]}
+            {
+              "value": "m3_epic7",
+              "text": "[에픽세븐]",
+              "mentions": [
+                "U07H17HB4MD"
+              ]
+            },
+            {
+              "value": "m3_cazena",
+              "text": "[카제나]",
+              "mentions": [
+                "U07HFLMSYKV"
+              ]
+            }
           ]
         },
         {
           "type": "group",
           "group_name": "[각 프로젝트] Dashboard DB 월간 최신화",
           "sub_items": [
-            {"value": "m4_epic7",  "text": "[에픽세븐]", "mentions": ["U07H17HB4MD"]},
-            {"value": "m4_cazena", "text": "[카제나]",   "mentions": ["U07HFLMSYKV"]}
+            {
+              "value": "m4_epic7",
+              "text": "[에픽세븐]",
+              "mentions": [
+                "U07H17HB4MD"
+              ]
+            },
+            {
+              "value": "m4_cazena",
+              "text": "[카제나]",
+              "mentions": [
+                "U07HFLMSYKV"
+              ]
+            }
           ]
         }
       ],
       "bot_name": "퍼블리싱QA 알림봇",
-      "bot_emoji": ":white_check_mark:"
+      "bot_emoji": ":white_check_mark:",
+      "weeks": [
+        2,
+        4
+      ],
+      "day_of_week": "friday"
     },
-
     {
       "id": "quarterly-qa-checklist",
       "name": "분기 QA 체크리스트",
@@ -91,13 +161,14 @@
         {
           "value": "q0_compat",
           "text": "[호환성] 글로벌 호환성 트렌드 리포트",
-          "mentions": ["U07H18AD1L7"]
+          "mentions": [
+            "U07H18AD1L7"
+          ]
         }
       ],
       "bot_name": "퍼블리싱QA 알림봇",
       "bot_emoji": ":white_check_mark:"
     },
-
     {
       "id": "weekly-qa-report",
       "name": "주간 QA 보고 알림",
@@ -113,16 +184,33 @@
           "type": "group",
           "group_name": "주간 보고 작성",
           "sub_items": [
-            {"value": "w0_cazena",  "text": "[카제나]",  "mentions": ["U07HFLMSYKV"]},
-            {"value": "w0_epic7",   "text": "[에픽세븐]", "mentions": ["U07H17HB4MD"]},
-            {"value": "w0_compat",  "text": "[호환성]",  "mentions": ["U07H18AD1L7"]}
+            {
+              "value": "w0_cazena",
+              "text": "[카제나]",
+              "mentions": [
+                "U07HFLMSYKV"
+              ]
+            },
+            {
+              "value": "w0_epic7",
+              "text": "[에픽세븐]",
+              "mentions": [
+                "U07H17HB4MD"
+              ]
+            },
+            {
+              "value": "w0_compat",
+              "text": "[호환성]",
+              "mentions": [
+                "U07H18AD1L7"
+              ]
+            }
           ]
         }
       ],
       "bot_name": "퍼블리싱QA 알림봇",
       "bot_emoji": ":white_check_mark:"
     },
-
     {
       "id": "epic7-update-checklist",
       "name": "에픽세븐 업데이트 차수 체크리스트",
@@ -139,33 +227,42 @@
         {
           "value": "item_0",
           "text": "[에픽세븐] <https://wiki.smilegate.net/pages/viewpage.action?pageId=592785226|WiKi Game Service 1>",
-          "mentions": ["U07H17HB4MD"]
+          "mentions": [
+            "U07H17HB4MD"
+          ]
         },
         {
           "value": "item_1",
           "text": "[에픽세븐] <https://wiki.smilegate.net/display/QASGP/Service+Quality|Service QA Report 최신화>",
-          "mentions": ["U07H17HB4MD"]
+          "mentions": [
+            "U07H17HB4MD"
+          ]
         },
         {
           "value": "item_2",
           "text": "[에픽세븐] <https://smilegate.sharepoint.com/:x:/s/QA439/IQC-FGLz316SSpKKaJ3cHwIBAUSTZPs2Ej6HCQt93rc5xYw?e=unhCJI|Dashboard DB 차수간 최신화>",
-          "mentions": ["U07H17HB4MD"]
+          "mentions": [
+            "U07H17HB4MD"
+          ]
         },
         {
           "value": "item_3",
           "text": "[에픽세븐] <https://wiki.smilegate.net/display/QASGP/%5BEP7%5D+Status+Board|Status Board>",
-          "mentions": ["U07H17HB4MD"]
+          "mentions": [
+            "U07H17HB4MD"
+          ]
         },
         {
           "value": "item_4",
           "text": "[에픽세븐] <https://smilegate.testrail.com/index.php?/projects/overview/28|테스트 레일 최신화>",
-          "mentions": ["U07H17HB4MD"]
+          "mentions": [
+            "U07H17HB4MD"
+          ]
         }
       ],
       "bot_name": "퍼블리싱QA 알림봇",
       "bot_emoji": ":white_check_mark:"
     },
-
     {
       "id": "cazena-update-checklist",
       "name": "카제나 업데이트 차수 체크리스트",
@@ -182,33 +279,42 @@
         {
           "value": "item_0",
           "text": "[카제나] <https://wiki.smilegate.net/pages/viewpage.action?pageId=592785226|WiKi Game Service 1>",
-          "mentions": ["U07HFLMSYKV"]
+          "mentions": [
+            "U07HFLMSYKV"
+          ]
         },
         {
           "value": "item_1",
           "text": "[카제나] <https://wiki.smilegate.net/display/QASGP/CZ++%7C+Service+Quality|Service QA Report 최신화>",
-          "mentions": ["U07HFLMSYKV"]
+          "mentions": [
+            "U07HFLMSYKV"
+          ]
         },
         {
           "value": "item_2",
           "text": "[카제나] <https://smilegate.sharepoint.com/:x:/s/QA439/IQC-FGLz316SSpKKaJ3cHwIBAUSTZPs2Ej6HCQt93rc5xYw?e=unhCJI|Dashboard DB 차수간 최신화>",
-          "mentions": ["U07HFLMSYKV"]
+          "mentions": [
+            "U07HFLMSYKV"
+          ]
         },
         {
           "value": "item_3",
           "text": "[카제나] <https://wiki.smilegate.net/display/QASGP/%5BCZ%5D+Status+Board|Status Board>",
-          "mentions": ["U07HFLMSYKV"]
+          "mentions": [
+            "U07HFLMSYKV"
+          ]
         },
         {
           "value": "item_4",
           "text": "[카제나] <https://smilegate.testrail.com/index.php?/projects/overview/29|테스트 레일 최신화>",
-          "mentions": ["U07HFLMSYKV"]
+          "mentions": [
+            "U07HFLMSYKV"
+          ]
         }
       ],
       "bot_name": "퍼블리싱QA 알림봇",
       "bot_emoji": ":white_check_mark:"
     },
-
     {
       "id": "daily-work-header",
       "name": "일일 업무 헤더",
@@ -221,7 +327,6 @@
       "bot_name": "퍼블리싱QA 알림봇",
       "bot_emoji": ":white_check_mark:"
     },
-
     {
       "id": "daily-qa-checklist",
       "name": "일일 QA 체크리스트",
@@ -237,76 +342,173 @@
           "type": "group",
           "group_name": "[각 프로젝트] <https://wiki.smilegate.net/pages/viewpage.action?pageId=552936235|서비스 장애>",
           "sub_items": [
-            {"value": "g0_epic7",  "text": "[에픽세븐]", "mentions": ["U07H17HB4MD"]},
-            {"value": "g0_cazena", "text": "[카제나]",   "mentions": ["U07HFLMSYKV"]}
+            {
+              "value": "g0_epic7",
+              "text": "[에픽세븐]",
+              "mentions": [
+                "U07H17HB4MD"
+              ]
+            },
+            {
+              "value": "g0_cazena",
+              "text": "[카제나]",
+              "mentions": [
+                "U07HFLMSYKV"
+              ]
+            }
           ]
         },
         {
           "type": "group",
           "group_name": "[각 프로젝트] 핫픽스 내역 (<https://wiki.smilegate.net/pages/viewpage.action?pageId=462596667|EP7> / <https://wiki.smilegate.net/pages/viewpage.action?pageId=650589593|CZN>)",
           "sub_items": [
-            {"value": "g1_epic7",  "text": "[에픽세븐]", "mentions": ["U07H17HB4MD"]},
-            {"value": "g1_cazena", "text": "[카제나]",   "mentions": ["U07HFLMSYKV"]}
+            {
+              "value": "g1_epic7",
+              "text": "[에픽세븐]",
+              "mentions": [
+                "U07H17HB4MD"
+              ]
+            },
+            {
+              "value": "g1_cazena",
+              "text": "[카제나]",
+              "mentions": [
+                "U07HFLMSYKV"
+              ]
+            }
           ]
         },
         {
           "value": "solo_market",
           "text": "마켓 검수 내역",
-          "mentions": ["U07H17HB4MD"]
+          "mentions": [
+            "U07H17HB4MD"
+          ]
         },
         {
           "type": "group",
           "group_name": "[각 프로젝트] Next Checklist (<https://wiki.smilegate.net/pages/viewpage.action?pageId=119414270|EP7> / <https://wiki.smilegate.net/pages/viewpage.action?pageId=213149273|CZN>)",
           "sub_items": [
-            {"value": "g3_epic7",  "text": "[에픽세븐]", "mentions": ["U07H17HB4MD"]},
-            {"value": "g3_cazena", "text": "[카제나]",   "mentions": ["U07HFLMSYKV"]}
+            {
+              "value": "g3_epic7",
+              "text": "[에픽세븐]",
+              "mentions": [
+                "U07H17HB4MD"
+              ]
+            },
+            {
+              "value": "g3_cazena",
+              "text": "[카제나]",
+              "mentions": [
+                "U07HFLMSYKV"
+              ]
+            }
           ]
         },
         {
           "type": "group",
           "group_name": "[각 프로젝트] <https://jira.smilegate.net/projects/SMQA/issues|커뮤니티 이슈>",
           "sub_items": [
-            {"value": "g4_epic7",  "text": "[에픽세븐]", "mentions": ["U07H17HB4MD"]},
-            {"value": "g4_cazena", "text": "[카제나]",   "mentions": ["U07HFLMSYKV"]}
+            {
+              "value": "g4_epic7",
+              "text": "[에픽세븐]",
+              "mentions": [
+                "U07H17HB4MD"
+              ]
+            },
+            {
+              "value": "g4_cazena",
+              "text": "[카제나]",
+              "mentions": [
+                "U07HFLMSYKV"
+              ]
+            }
           ]
         },
         {
           "type": "group",
           "group_name": "[각 프로젝트] TEST INFO (<https://wiki.smilegate.net/display/QASGP/INFO+%7C+Test+Result|EP7> / <https://wiki.smilegate.net/display/QASGP/CZ+%7C+TEST+INFO|CZN>)",
           "sub_items": [
-            {"value": "g5_epic7",  "text": "[에픽세븐]", "mentions": ["U07H17HB4MD"]},
-            {"value": "g5_cazena", "text": "[카제나]",   "mentions": ["U07HFLMSYKV"]}
+            {
+              "value": "g5_epic7",
+              "text": "[에픽세븐]",
+              "mentions": [
+                "U07H17HB4MD"
+              ]
+            },
+            {
+              "value": "g5_cazena",
+              "text": "[카제나]",
+              "mentions": [
+                "U07HFLMSYKV"
+              ]
+            }
           ]
         },
         {
           "type": "group",
           "group_name": "[각 프로젝트] Release INFO (<https://wiki.smilegate.net/display/QASGP/INFO+%7C+Release+Version|EP7> / <https://wiki.smilegate.net/display/QASGP/CZ+%7C+Release+INFO|CZN>)",
           "sub_items": [
-            {"value": "g6_epic7",  "text": "[에픽세븐]", "mentions": ["U07H17HB4MD"]},
-            {"value": "g6_cazena", "text": "[카제나]",   "mentions": ["U07HFLMSYKV"]}
+            {
+              "value": "g6_epic7",
+              "text": "[에픽세븐]",
+              "mentions": [
+                "U07H17HB4MD"
+              ]
+            },
+            {
+              "value": "g6_cazena",
+              "text": "[카제나]",
+              "mentions": [
+                "U07HFLMSYKV"
+              ]
+            }
           ]
         },
         {
           "type": "group",
           "group_name": "[각 프로젝트] GDI 데이터 파일 업로드",
           "sub_items": [
-            {"value": "g7_epic7",  "text": "[에픽세븐]", "mentions": ["U07H17HB4MD"]},
-            {"value": "g7_cazena", "text": "[카제나]",   "mentions": ["U07HFLMSYKV"]}
+            {
+              "value": "g7_epic7",
+              "text": "[에픽세븐]",
+              "mentions": [
+                "U07H17HB4MD"
+              ]
+            },
+            {
+              "value": "g7_cazena",
+              "text": "[카제나]",
+              "mentions": [
+                "U07HFLMSYKV"
+              ]
+            }
           ]
         },
         {
           "type": "group",
           "group_name": "[각 프로젝트] <https://jira.smilegate.net/secure/PortfolioPlanView.jspa?id=242&sid=254&vid=988#plan/backlog|QA Task Management>",
           "sub_items": [
-            {"value": "g8_epic7",  "text": "[에픽세븐]", "mentions": ["U07H17HB4MD"]},
-            {"value": "g8_cazena", "text": "[카제나]",   "mentions": ["U07HFLMSYKV"]}
+            {
+              "value": "g8_epic7",
+              "text": "[에픽세븐]",
+              "mentions": [
+                "U07H17HB4MD"
+              ]
+            },
+            {
+              "value": "g8_cazena",
+              "text": "[카제나]",
+              "mentions": [
+                "U07HFLMSYKV"
+              ]
+            }
           ]
         }
       ],
       "bot_name": "퍼블리싱QA 알림봇",
       "bot_emoji": ":white_check_mark:"
     },
-
     {
       "id": "mission-ai-driven-qa",
       "name": "미션 진행 현황 - AI-Driven QA Efficiency",
@@ -325,7 +527,6 @@
         ]
       }
     },
-
     {
       "id": "mission-balance-engineering",
       "name": "미션 진행 현황 - Balance Engineering",
@@ -344,7 +545,6 @@
         ]
       }
     },
-
     {
       "id": "mission-data-analysis",
       "name": "미션 진행 현황 - Data analysis",
@@ -363,7 +563,6 @@
         ]
       }
     },
-
     {
       "id": "mission-knowledge-management",
       "name": "미션 진행 현황 - Knowledge Management",
@@ -382,7 +581,6 @@
         ]
       }
     },
-
     {
       "id": "mission-roundtable",
       "name": "미션 진행 현황 - Roundtable",
@@ -401,7 +599,6 @@
         ]
       }
     },
-
     {
       "id": "mission-tech-support",
       "name": "미션 진행 현황 - Tech Support",
@@ -420,6 +617,5 @@
         ]
       }
     }
-
   ]
 }

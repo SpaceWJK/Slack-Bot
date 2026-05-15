@@ -90,6 +90,18 @@ class NotificationScheduler:
                 last_day = week[target_wd]
         return date_obj.day == last_day
 
+    def _is_nth_weekday_of_month(self, date_obj, day_abbr: str, n: int) -> bool:
+        """date_obj 가 해당 월의 n번째 day_abbr 요일인지 확인 (1-indexed)"""
+        target_wd = DAY_WEEKDAY_IDX.get(day_abbr, 4)
+        cal       = calendar.monthcalendar(date_obj.year, date_obj.month)
+        count     = 0
+        for week in cal:
+            if week[target_wd] != 0:
+                count += 1
+                if count == n:
+                    return date_obj.day == week[target_wd]
+        return False
+
     # ── Job 함수 생성기 ────────────────────────────────────────
 
     def _make_job(self, s: dict):
@@ -251,6 +263,39 @@ class NotificationScheduler:
             job_fn=job,
         )
 
+    def _add_monthly_nth_weekday(self, s: dict):
+        """
+        매월 n번째 특정 요일 (복수 지정 가능)
+        config 필드: day_of_week, weeks (list[int], 예: [2, 4])
+        - CronTrigger: 매주 해당 요일에 실행
+        - job 내부: 오늘이 지정된 주차인지 확인 → 아니면 스킵
+        """
+        h, m      = self._parse_hm(s["time"])
+        day_abbr  = self._resolve_day(s.get("day_of_week", "friday"))
+        day_name  = s.get("day_of_week", "금요일")
+        weeks     = s.get("weeks", [])  # e.g. [2, 4]
+
+        def job():
+            today = datetime.now(self.tz).date()
+            matched = any(self._is_nth_weekday_of_month(today, day_abbr, n) for n in weeks)
+            if not matched:
+                logger.info(
+                    f"  ⏭  스킵 ({weeks}주차 아님): [{s.get('name')}] {today}"
+                )
+                return
+            sm.log_fired(s["id"])
+            logger.info(f"  🚀  실행 ({weeks}주차 {day_name}): [{s.get('name')}] {today}")
+            self._select_job_fn(s)()
+
+        job.__name__ = s.get("name", s["id"])
+        weeks_str = "+".join(f"{n}주차" for n in weeks)
+        self._register_job(
+            s,
+            CronTrigger(day_of_week=day_abbr, hour=h, minute=m, timezone=self.tz),
+            f"매월 {weeks_str} {day_name} {s['time']}",
+            job_fn=job,
+        )
+
     def _add_biweekly(self, s: dict):
         """
         격주: IntervalTrigger(weeks=2)
@@ -393,6 +438,7 @@ class NotificationScheduler:
             "weekly":                  self._add_weekly,
             "monthly":                 self._add_monthly,
             "monthly_last_weekday":    self._add_monthly_last_weekday,
+            "monthly_nth_weekday":     self._add_monthly_nth_weekday,
             "quarterly_first_monday":  self._add_quarterly_first_monday,
             "biweekly":                self._add_biweekly,
             "nweekly":                 self._add_nweekly,
