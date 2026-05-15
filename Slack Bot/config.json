@@ -607,14 +607,15 @@
       "channel": "C0AKGRTU36U",
       "mission": {
         "mission_number": "M-07",
-        "name": "미정",
-        "target_date": "",
+        "name": "업무 효율화 지원 체계",
+        "target_date": "2026-05-29",
         "channel_name": "Tech Support",
         "sub_tasks": [
-          "미정",
-          "미정",
-          "미정"
-        ]
+          "업무 효율화를 위한 기술 지원 프로세스 수립",
+          "효율성 측정 및 지원 검토 기준 마련",
+          "지원 요청 플로우 구축(요청 - 검토 - 구현 - 결과)"
+        ],
+        "start_date": "2026-04-17"
       }
     }
   ]
