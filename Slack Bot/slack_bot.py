@@ -367,7 +367,11 @@ def _wiki_call_claude(page_title: str, page_text: str, question: str,
     )
 
     try:
-        client_ai = anthropic.Anthropic(api_key=api_key)
+        try:
+            from cost_tracker import TrackedAnthropic
+            client_ai = TrackedAnthropic("slack-bot", api_key=api_key)
+        except Exception:
+            client_ai = anthropic.Anthropic(api_key=api_key)
         message   = client_ai.messages.create(
             model      = "claude-haiku-4-5-20251001",
             max_tokens = 1024,
@@ -900,7 +904,11 @@ def _gdi_claude_call(prompt: str, source_label: str, question: str,
 
     _elapsed = 0
     try:
-        client_ai = anthropic.Anthropic(api_key=api_key)
+        try:
+            from cost_tracker import TrackedAnthropic
+            client_ai = TrackedAnthropic("slack-bot", api_key=api_key)
+        except Exception:
+            client_ai = anthropic.Anthropic(api_key=api_key)
         t0 = time.time()
         message   = client_ai.messages.create(
             model      = "claude-haiku-4-5-20251001",
@@ -1133,7 +1141,11 @@ def _jira_claude_call(prompt: str, source_label: str, question: str,
 
     _elapsed = 0
     try:
-        client_ai = anthropic.Anthropic(api_key=api_key)
+        try:
+            from cost_tracker import TrackedAnthropic
+            client_ai = TrackedAnthropic("slack-bot", api_key=api_key)
+        except Exception:
+            client_ai = anthropic.Anthropic(api_key=api_key)
         t0 = time.time()
         message   = client_ai.messages.create(
             model      = "claude-haiku-4-5-20251001",
