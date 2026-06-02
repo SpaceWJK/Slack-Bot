@@ -22,6 +22,16 @@ import sqlite3
 from datetime import datetime, timedelta
 from io import BytesIO
 import socket
+
+# .env 파일 로드 (python-dotenv 없어도 동작)
+_ENV_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+if os.path.exists(_ENV_FILE):
+    with open(_ENV_FILE, encoding="utf-8") as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
 import time
 try:
     import boto3
@@ -46,7 +56,7 @@ GDI_API = (
 STATIC_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ── Admin 인증 ──────────────────────────────────────────────────
-ADMIN_PW = "qateam2025@"
+ADMIN_PW = os.environ.get("KIS_ADMIN_PW", "qateam2025@")
 
 # ── 하트비트: 연결된 클라이언트 추적 (Admin 서버 전용) ───────────
 import threading

@@ -859,7 +859,7 @@ body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; background: 
 </style>
 <script>
 window.KIS_MODE = "admin";
-window.KIS_ADMIN_PW = "qateam2025@";
+// KIS_ADMIN_PW injected by server via window.KIS_ADMIN_PW
 </script>
 </head>
 <body>
@@ -1449,7 +1449,7 @@ let selectMode = false;
 const IS_ADMIN_PAGE = (window.KIS_MODE === 'admin');
 
 // Admin password — change this value to set a different password
-const ADMIN_PW = window.KIS_ADMIN_PW || 'qateam2025@';
+const ADMIN_PW = window.KIS_ADMIN_PW || '';
 
 // ========== Idle Auto-Shutdown (배포용 전용, 30분) ==========
 const IDLE_TIMEOUT  = 30 * 60 * 1000;  // 30분
