@@ -3084,6 +3084,11 @@ def cmd_commands_only(sender: SlackSender, bolt_app: App, app_token: str):
 # ── 메인 ──────────────────────────────────────────────────────
 
 def main():
+    # pm2가 ANTHROPIC_AUTH_TOKEN='' 빈 값 상속 시 SDK가 'Bearer ' 헤더 생성 → 요청 실패
+    # load_dotenv 전에 제거하여 .env의 ANTHROPIC_API_KEY만 사용되도록 보장
+    if not os.environ.get("ANTHROPIC_AUTH_TOKEN", "").strip():
+        os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
+
     load_dotenv(override=True)
 
     # ── 메시지 만료 설정 ──

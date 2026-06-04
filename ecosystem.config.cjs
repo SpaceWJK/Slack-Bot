@@ -10,6 +10,10 @@ module.exports = {
       windowsHide: true,
       env: {
         PYTHONIOENCODING: "utf-8",
+        // Zscaler SSL 우회 — company-ca-bundle은 Anthropic API CA 미포함
+        // certifi 표준 번들로 교체 (httpx/requests 공통 적용)
+        SSL_CERT_FILE: "D:\\Vibe Dev\\Slack Bot\\venv\\Lib\\site-packages\\certifi\\cacert.pem",
+        REQUESTS_CA_BUNDLE: "D:\\Vibe Dev\\Slack Bot\\venv\\Lib\\site-packages\\certifi\\cacert.pem",
       },
       // 자동 재시작: 크래시 시 즉시 복구
       autorestart: true,
