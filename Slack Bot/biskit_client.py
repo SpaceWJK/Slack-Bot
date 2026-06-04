@@ -6,6 +6,11 @@ BISKIT: 내부 게임 데이터 지표 서비스
 인증: Bearer ${BISKIT_TOKEN}
 
 McpSession 패턴 (jira_client.py 기반)
+
+스키마 (tools/list 실측 2026-06-04):
+  search_datasets:       project_id(int), keywords(array[str])
+  get_dataset_parameters: dataset_ids(array[int])
+  execute_query:         dataset_id(int), parameters(?)
 """
 
 import os
@@ -43,7 +48,6 @@ def call_tool(tool_name: str, arguments: dict) -> dict:
         raise RuntimeError(f"BISKIT MCP 오류 ({tool_name}): {err}")
     if result is None:
         return {}
-    # result는 JSON 문자열일 수 있음
     if isinstance(result, str):
         import json
         try:
@@ -61,23 +65,33 @@ def list_projects() -> list:
     return result.get("projects", result.get("data", []))
 
 
-def search_datasets(project_id: str, keyword: str) -> list:
-    """데이터셋 검색. BISKIT API는 'keywords'(복수) 파라미터 사용."""
+def search_datasets(project_id, keyword: str) -> list:
+    """데이터셋 검색.
+    project_id: int (스키마 강제)
+    keywords: array[str] (스키마 강제)
+    """
+    keywords_list = [k.strip() for k in keyword.split() if k.strip()] if keyword else []
     result = call_tool("search_datasets", {
-        "project_id": project_id,
-        "keywords": keyword,  # API 스키마: keywords (복수)
+        "project_id": int(project_id),
+        "keywords": keywords_list,
     })
     if isinstance(result, list):
         return result
     return result.get("datasets", result.get("data", []))
 
 
-def get_dataset_parameters(dataset_id: str) -> dict:
-    """데이터셋 파라미터 정보 조회."""
-    return call_tool("get_dataset_parameters", {"dataset_id": dataset_id})
+def get_dataset_parameters(dataset_id) -> dict:
+    """데이터셋 파라미터 정보 조회.
+    dataset_ids: array[int] (스키마 강제)
+    """
+    return call_tool("get_dataset_parameters", {"dataset_ids": [int(dataset_id)]})
 
 
-def execute_query(dataset_id: str, parameters: dict) -> dict:
-    """데이터셋 쿼리 실행."""
-    params = {"dataset_id": dataset_id, **parameters}
+def execute_query(dataset_id, parameters: dict) -> dict:
+    """데이터셋 쿼리 실행.
+    dataset_id: int (스키마 강제)
+    """
+    params = {"dataset_id": int(dataset_id)}
+    if parameters:
+        params["parameters"] = parameters
     return call_tool("execute_query", params)

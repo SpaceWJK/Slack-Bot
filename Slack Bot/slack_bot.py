@@ -1469,8 +1469,11 @@ def _biskit_execute_plan(plan: dict) -> dict:
         }
 
     dataset = datasets[0]
-    dataset_id = dataset.get("id", "")
-    dataset_name = dataset.get("name", keyword)
+    # 실측 스키마: datasetId(int), menuPath(str), description(str)
+    dataset_id = dataset.get("datasetId") or dataset.get("id", "")
+    dataset_name = dataset.get("menuPath") or dataset.get("description", keyword)
+    if dataset_name and len(dataset_name) > 60:
+        dataset_name = dataset_name[:60]
 
     query_params = {}
     if plan.get("date_from"):
