@@ -1553,45 +1553,7 @@ def _biskit_query(question: str, user_id: str, respond):
         respond(text=f"❌ BISKIT 조회 오류\n```\n{e}\n```")
 
 
-# ── /ai 헬퍼 ──────────────────────────────────────────────────
-
-def _ai_claude_call(question: str, respond):
-    """Claude Sonnet 일반 Q&A — GDI/OpsTracker 비의존."""
-    question = _sanitize_user_input(question)
-    import anthropic
-    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        respond(text="❌ `ANTHROPIC_API_KEY` 환경변수가 설정되지 않았습니다.")
-        return
-
-    try:
-        try:
-            from cost_tracker import TrackedAnthropic
-            client_ai = TrackedAnthropic("slack-bot", api_key=api_key)
-        except Exception:
-            client_ai = anthropic.Anthropic(api_key=api_key)
-
-        prompt = question + ANSWER_FORMAT_INSTRUCTION
-        msg = client_ai.messages.create(
-            model="claude-sonnet-4-5",
-            max_tokens=2048,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        if hasattr(msg, "usage"):
-            _log_token_usage("ai", msg.usage.input_tokens, msg.usage.output_tokens)
-        answer = msg.content[0].text
-    except Exception as e:
-        logger.error(f"[ai] Claude API 오류: {e}")
-        respond(text=f"❌ Claude API 오류\n```\n{e}\n```")
-        return
-
-    respond(text=format_ai_response(
-        question=question,
-        raw_answer=answer,
-        source_type="ai",
-        source_label="Sonnet",
-        source_url="",
-    ))
+# /ai 헬퍼 제거 (task-186 설계 오류 — 웹 검색 미지원)
 
 
 # ── Bolt App 생성 + 액션 핸들러 등록 ──────────────────────────
@@ -2762,35 +2724,13 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
 
     @app.command("/ai")
     def handle_ai_command(ack, respond, command, client):
-        r"""
-        /ai [질문]   → Claude Sonnet AI 질의 응답
-        예: /ai QA 자동화에서 가장 중요한 지표는?
-        """
+        """제거된 커맨드 — 웹 검색 미지원으로 실용성 없어 삭제."""
         ack()
-        if message_expiry.MESSAGE_EXPIRY_ENABLED:
-            respond = ExpiringResponder(
-                respond, client, command.get("channel_id", "")
-            )
-            respond.send_initial()
-        text = (command.get("text") or "").strip()
-
-        if not text or text.lower() == "help":
-            respond(text=(
-                "*AI 질의응답*\n\n"
-                "사용법: `/ai <질문>`\n\n"
-                "*예시:*\n"
-                "• `/ai QA 자동화에서 가장 중요한 지표는?`\n"
-                "• `/ai 게임 출시 전 체크리스트 항목 알려줘`\n"
-                "• `/ai SQL 쿼리 최적화 방법`"
-            ))
-            return
-
-        import threading
-        threading.Thread(
-            target=_ai_claude_call,
-            args=(text, respond),
-            daemon=True,
-        ).start()
+        respond(text=(
+            "⚠️ `/ai` 커맨드는 제거되었습니다.\n\n"
+            "Claude API는 실시간 웹 검색을 지원하지 않아 유용한 답변을 드리기 어렵습니다.\n"
+            "게임 데이터 조회는 `/biskit`, 문서 검색은 `/wiki`, 이슈 검색은 `/jira` 를 이용해주세요."
+        ))
 
     return app
 
