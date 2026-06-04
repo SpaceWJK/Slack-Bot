@@ -5,8 +5,8 @@
 > **버전 규칙 (Semantic Versioning)**
 > - **Major** `x.0.0` : 기존 버전과 호환되지 않는 파격적 변경 (아키텍처 전면 개편 등)
 > - **Minor** `0.x.0` : **새로운 기능 카테고리 추가 시에만** 올림
->   - 현재 기능: ① 슬랙 알리미(스케줄 알림)  ② /wiki 슬래시 커맨드  ③ /gdi 슬래시 커맨드  ④ /jira 슬래시 커맨드
->   - 다섯 번째 기능 카테고리 추가 시 → v1.5.0
+>   - 현재 기능: ① 슬랙 알리미(스케줄 알림)  ② /wiki 슬래시 커맨드  ③ /gdi 슬래시 커맨드  ④ /jira 슬래시 커맨드  ⑤ /biskit 커맨드  ⑥ /ai 커맨드
+>   - 일곱 번째 기능 카테고리 추가 시 → v1.9.0
 > - **Patch** `0.0.x` : 기능 추가 없는 버그 수정 / 기존 기능 개선 / 설정 변경
 >   - 알리미 기능 개선(미션 리마인더 등), wiki 안정화 등은 모두 Patch
 >
@@ -17,6 +17,29 @@
 > ```
 >
 > **🔖 롤백 포인트**: 대규모 작업 전 표시된 안전 복원 지점. `⚠️ ROLLBACK POINT` 블록에 복원 명령어 포함.
+
+---
+
+## [1.8.0] - 2026-06-04
+
+### 신규 기능 (task-186)
+
+#### `/biskit` — BISKIT 게임 데이터 지표 조회
+- BISKIT MCP(https://mcp.sginfra.net/biskit-report-mcp) 연동
+- 자연어 질의 → Claude Haiku가 MCP 호출 계획 수립 → BISKIT 데이터 조회 → Claude Sonnet 합성
+- 예: `/biskit 카제나 5월 커뮤니티 긍부정 동향`
+- `biskit_client.py` 신규 (McpSession HTTP 클라이언트)
+- 입력 sanitize: `_sanitize_user_input()` (Prompt Injection 방어, max 500자)
+
+#### `/ai` — Claude Sonnet 일반 Q&A
+- Claude Sonnet(`claude-sonnet-4-5-20251001`) 직접 질의
+- GDI/Jira 커플링 없는 범용 AI 챗봇 기능
+- 예: `/ai QA 자동화에서 가장 중요한 지표는?`
+
+#### 공통
+- 기존 통일 포맷(📋💬📎🔗) 준수
+- `response_formatter.py` source_type 확장: `biskit`→"BISKIT", `ai`→"Claude AI"
+- 기존 /wiki, /gdi, /jira, /claim 핸들러 무변경
 
 ---
 
