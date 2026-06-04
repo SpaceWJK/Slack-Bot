@@ -1394,6 +1394,203 @@ def _reconstruct_checklist_state(body: dict, checked: list):
     }
 
 
+# ── /biskit + /ai 공용 입력 검증 ──────────────────────────────
+
+def _sanitize_user_input(text: str, max_len: int = 500) -> str:
+    """사용자 입력 정규화 — 길이 제한 + 개행 제거 (Prompt Injection 방어).
+
+    내부 슬랙 워크스페이스 전용이지만 AI 프롬프트 오염 방지.
+    """
+    text = text.replace("\n", " ").replace("\r", " ").strip()
+    if len(text) > max_len:
+        text = text[:max_len]
+    return text
+
+
+# ── /biskit 헬퍼 ──────────────────────────────────────────────
+
+def _biskit_help(respond):
+    respond(text=(
+        "*BISKIT 데이터 조회*\n\n"
+        "사용법: `/biskit <자연어 질의>`\n\n"
+        "*예시:*\n"
+        "• `/biskit 카제나 5월 커뮤니티 긍부정 동향`\n"
+        "• `/biskit 에픽세븐 최근 DAU 추이`\n"
+        "• `/biskit 로드나인 4월 신규 유저 비율`"
+    ))
+
+
+def _biskit_plan_call(question: str, projects: list) -> dict:
+    """Claude Haiku: 자연어 질의 → project_id + 데이터셋 키워드 + 날짜 파라미터"""
+    import anthropic, json, re
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    try:
+        from cost_tracker import TrackedAnthropic
+        client_ai = TrackedAnthropic("slack-bot", api_key=api_key)
+    except Exception:
+        client_ai = anthropic.Anthropic(api_key=api_key)
+
+    projects_text = "\n".join([
+        f"- id={p.get('id','?')}: {p.get('aiDescription', p.get('name',''))}"
+        for p in projects[:15]
+    ])
+    prompt = (
+        f"다음 BISKIT 프로젝트 목록에서 사용자 질의에 맞는 project_id와 "
+        f"데이터셋 검색 키워드, 날짜 범위를 추출하세요.\n\n"
+        f"프로젝트 목록:\n{projects_text}\n\n"
+        f"사용자 질의: {question}\n\n"
+        f"JSON으로만 응답 (다른 텍스트 없음):\n"
+        f'{{"project_id":"...","search_keyword":"...","date_from":"YYYY-MM-DD or null","date_to":"YYYY-MM-DD or null"}}'
+    )
+    msg = client_ai.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=256,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = msg.content[0].text.strip()
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    if not m:
+        raise ValueError(f"계획 파싱 실패: {text[:200]}")
+    return json.loads(m.group())
+
+
+def _biskit_execute_plan(plan: dict) -> dict:
+    """BISKIT MCP 순차 호출: search_datasets → get_dataset_parameters → execute_query"""
+    import biskit_client as bc
+
+    project_id = plan.get("project_id", "")
+    keyword = plan.get("search_keyword", "")
+
+    datasets = bc.search_datasets(project_id, keyword)
+    if not datasets:
+        return {
+            "error": f"프로젝트 '{project_id}'에서 '{keyword}' 관련 데이터셋을 찾을 수 없습니다.",
+            "dataset_name": keyword,
+        }
+
+    dataset = datasets[0]
+    dataset_id = dataset.get("id", "")
+    dataset_name = dataset.get("name", keyword)
+
+    query_params = {}
+    if plan.get("date_from"):
+        query_params["date_from"] = plan["date_from"]
+    if plan.get("date_to"):
+        query_params["date_to"] = plan["date_to"]
+
+    data = bc.execute_query(dataset_id, query_params)
+    return {
+        "dataset_name": dataset_name,
+        "project_id": project_id,
+        "data": data,
+    }
+
+
+def _biskit_synth_call(question: str, exec_result: dict) -> str:
+    """Claude Sonnet: BISKIT 조회 결과 → 자연어 합성"""
+    import anthropic, json
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    try:
+        from cost_tracker import TrackedAnthropic
+        client_ai = TrackedAnthropic("slack-bot", api_key=api_key)
+    except Exception:
+        client_ai = anthropic.Anthropic(api_key=api_key)
+
+    data_text = json.dumps(exec_result.get("data", {}), ensure_ascii=False, indent=2)[:3000]
+    prompt = (
+        f"사용자 질의에 대한 BISKIT 데이터를 분석하여 답변하세요.\n\n"
+        f"질의: {question}\n"
+        f"데이터셋: {exec_result.get('dataset_name', '')}\n"
+        f"데이터:\n{data_text}\n"
+        f"{ANSWER_FORMAT_INSTRUCTION}"
+    )
+    msg = client_ai.messages.create(
+        model="claude-sonnet-4-5-20251001",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    if hasattr(msg, "usage"):
+        _log_token_usage("biskit", msg.usage.input_tokens, msg.usage.output_tokens)
+    return msg.content[0].text
+
+
+def _biskit_query(question: str, user_id: str, respond):
+    """BISKIT 전체 조회 파이프라인."""
+    import biskit_client as bc
+
+    question = _sanitize_user_input(question)
+
+    token = os.getenv("BISKIT_TOKEN", "").strip()
+    if not token:
+        respond(text="❌ `BISKIT_TOKEN` 환경변수가 설정되지 않았습니다.")
+        return
+
+    try:
+        projects = bc.list_projects()
+        plan = _biskit_plan_call(question, projects)
+        exec_result = _biskit_execute_plan(plan)
+
+        if exec_result.get("error"):
+            respond(text=f"⚠️ {exec_result['error']}")
+            return
+
+        raw_answer = _biskit_synth_call(question, exec_result)
+        dataset_label = exec_result.get("dataset_name", "BISKIT")
+
+        respond(text=format_ai_response(
+            question=question,
+            raw_answer=raw_answer,
+            source_type="biskit",
+            source_label=dataset_label,
+            source_url="",
+            display_question=question,
+        ))
+    except Exception as e:
+        logger.error(f"[biskit] 조회 오류: {e}")
+        respond(text=f"❌ BISKIT 조회 오류\n```\n{e}\n```")
+
+
+# ── /ai 헬퍼 ──────────────────────────────────────────────────
+
+def _ai_claude_call(question: str, respond):
+    """Claude Sonnet 일반 Q&A — GDI/OpsTracker 비의존."""
+    question = _sanitize_user_input(question)
+    import anthropic
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        respond(text="❌ `ANTHROPIC_API_KEY` 환경변수가 설정되지 않았습니다.")
+        return
+
+    try:
+        try:
+            from cost_tracker import TrackedAnthropic
+            client_ai = TrackedAnthropic("slack-bot", api_key=api_key)
+        except Exception:
+            client_ai = anthropic.Anthropic(api_key=api_key)
+
+        prompt = question + ANSWER_FORMAT_INSTRUCTION
+        msg = client_ai.messages.create(
+            model="claude-sonnet-4-5-20251001",
+            max_tokens=2048,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        if hasattr(msg, "usage"):
+            _log_token_usage("ai", msg.usage.input_tokens, msg.usage.output_tokens)
+        answer = msg.content[0].text
+    except Exception as e:
+        logger.error(f"[ai] Claude API 오류: {e}")
+        respond(text=f"❌ Claude API 오류\n```\n{e}\n```")
+        return
+
+    respond(text=format_ai_response(
+        question=question,
+        raw_answer=answer,
+        source_type="ai",
+        source_label="Sonnet",
+        source_url="",
+    ))
+
+
 # ── Bolt App 생성 + 액션 핸들러 등록 ──────────────────────────
 
 def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
@@ -2529,6 +2726,61 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
             f"카테고리: {category}\n"
             f"내용: {content}"
         ))
+
+    # ── /biskit ────────────────────────────────────────────────
+
+    @app.command("/biskit")
+    def handle_biskit_command(ack, respond, command, client):
+        r"""
+        /biskit help            → 도움말
+        /biskit [자연어 질의]    → BISKIT MCP 데이터 조회 + AI 답변
+        예: /biskit 카제나 5월 커뮤니티 긍부정 동향
+        """
+        ack()
+        if message_expiry.MESSAGE_EXPIRY_ENABLED:
+            respond = ExpiringResponder(
+                respond, client, command.get("channel_id", "")
+            )
+            respond.send_initial()
+        text = (command.get("text") or "").strip()
+
+        if not text or text.lower() == "help":
+            _biskit_help(respond)
+            return
+
+        import threading
+        threading.Thread(
+            target=_biskit_query,
+            args=(text, command.get("user_id", ""), respond),
+            daemon=True,
+        ).start()
+
+    # ── /ai ────────────────────────────────────────────────────
+
+    @app.command("/ai")
+    def handle_ai_command(ack, respond, command, client):
+        r"""
+        /ai [질문]   → Claude Sonnet AI 질의 응답
+        예: /ai QA 자동화에서 가장 중요한 지표는?
+        """
+        ack()
+        if message_expiry.MESSAGE_EXPIRY_ENABLED:
+            respond = ExpiringResponder(
+                respond, client, command.get("channel_id", "")
+            )
+            respond.send_initial()
+        text = (command.get("text") or "").strip()
+
+        if not text:
+            respond(text="사용법: `/ai <질문>`\n예: `/ai QA 자동화에서 가장 중요한 지표는?`")
+            return
+
+        import threading
+        threading.Thread(
+            target=_ai_claude_call,
+            args=(text, respond),
+            daemon=True,
+        ).start()
 
     return app
 

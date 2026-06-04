@@ -112,9 +112,10 @@ def format_ai_response(
         parts.append(f"📎 *근거*\n{evidence}")
 
     # ── 출처 라인 ──
-    type_label = {"wiki": "Wiki", "jira": "Jira", "gdi": "GDI"}.get(
-        source_type, source_type
-    )
+    type_label = {
+        "wiki": "Wiki", "jira": "Jira", "gdi": "GDI",
+        "biskit": "BISKIT", "ai": "Claude AI",
+    }.get(source_type, source_type)
     if source_url:
         # 이슈 키 단독 조회 시: 이슈 URL 직접 링크
         parts.append(
