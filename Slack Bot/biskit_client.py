@@ -62,10 +62,10 @@ def list_projects() -> list:
 
 
 def search_datasets(project_id: str, keyword: str) -> list:
-    """데이터셋 검색."""
+    """데이터셋 검색. BISKIT API는 'keywords'(복수) 파라미터 사용."""
     result = call_tool("search_datasets", {
         "project_id": project_id,
-        "keyword": keyword,
+        "keywords": keyword,  # API 스키마: keywords (복수)
     })
     if isinstance(result, list):
         return result

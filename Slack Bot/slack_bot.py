@@ -1505,7 +1505,7 @@ def _biskit_synth_call(question: str, exec_result: dict) -> str:
         f"{ANSWER_FORMAT_INSTRUCTION}"
     )
     msg = client_ai.messages.create(
-        model="claude-sonnet-4-5-20251001",
+        model="claude-sonnet-4-5",
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -1570,7 +1570,7 @@ def _ai_claude_call(question: str, respond):
 
         prompt = question + ANSWER_FORMAT_INSTRUCTION
         msg = client_ai.messages.create(
-            model="claude-sonnet-4-5-20251001",
+            model="claude-sonnet-4-5",
             max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],
         )
