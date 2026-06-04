@@ -2771,8 +2771,15 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
             respond.send_initial()
         text = (command.get("text") or "").strip()
 
-        if not text:
-            respond(text="사용법: `/ai <질문>`\n예: `/ai QA 자동화에서 가장 중요한 지표는?`")
+        if not text or text.lower() == "help":
+            respond(text=(
+                "*AI 질의응답*\n\n"
+                "사용법: `/ai <질문>`\n\n"
+                "*예시:*\n"
+                "• `/ai QA 자동화에서 가장 중요한 지표는?`\n"
+                "• `/ai 게임 출시 전 체크리스트 항목 알려줘`\n"
+                "• `/ai SQL 쿼리 최적화 방법`"
+            ))
             return
 
         import threading
