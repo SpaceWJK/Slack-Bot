@@ -1223,23 +1223,39 @@ def _ensure_single_instance(pid_file: str = "slack_bot.pid"):
     PID 파일을 이용해 봇이 하나만 실행되도록 보장합니다.
     - 시작 시: 기존 PID 파일의 프로세스가 살아있으면 종료
     - 종료 시: atexit 으로 PID 파일 자동 삭제
+
+    [Windows 주의] os.kill(pid, 0) 은 권한 없을 때도 OSError 발생 →
+    살아있는 프로세스를 "없음"으로 오판해 중복 실행 허용하는 버그.
+    tasklist 기반으로 교체 (권한 무관, 항상 신뢰 가능).
     """
+    # 절대 경로 고정 — cwd 무관하게 동일 파일 참조
+    pid_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), pid_file)
+
+    def _pid_alive(pid: int) -> bool:
+        """Windows-safe: tasklist으로 PID 존재 확인 (권한 무관)."""
+        try:
+            result = subprocess.run(
+                ["tasklist", "/FI", f"PID eq {pid}", "/NH", "/FO", "CSV"],
+                capture_output=True, text=True, timeout=5,
+            )
+            return str(pid) in result.stdout
+        except Exception:
+            return False  # 확인 불가 시 안전하게 "없음" 처리
+
     if os.path.exists(pid_file):
         try:
-            with open(pid_file) as f:
+            with open(pid_file, encoding="utf-8") as f:
                 old_pid = int(f.read().strip())
-            os.kill(old_pid, 0)   # signal 0 → 프로세스 존재 여부 확인
-            logger.error(
-                f"이미 실행 중인 봇 프로세스가 있습니다 (PID: {old_pid}).\n"
-                f"중복 실행을 원한다면 '{pid_file}' 파일을 삭제 후 재시작하세요."
-            )
-            sys.exit(1)
-        except (ProcessLookupError, OSError):
-            pass   # 프로세스 없음 → 파일만 남은 것, 덮어씀
+            if _pid_alive(old_pid):
+                logger.error(
+                    f"이미 실행 중인 봇 프로세스가 있습니다 (PID: {old_pid}).\n"
+                    f"중복 실행을 원한다면 '{pid_file}' 파일을 삭제 후 재시작하세요."
+                )
+                sys.exit(1)
         except ValueError:
             pass   # 파일 내용 오류 → 무시
 
-    with open(pid_file, "w") as f:
+    with open(pid_file, "w", encoding="utf-8") as f:
         f.write(str(os.getpid()))
 
     def _cleanup():
