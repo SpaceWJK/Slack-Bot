@@ -1,0 +1,63 @@
+{
+  "gdi": {
+    "games": {
+      "에픽세븐": 16963,
+      "카제나": 11472,
+      "로드나인": 496
+    },
+    "folder_roles": {
+      "game_data": 25527,
+      "planning": 2527,
+      "unknown": 497,
+      "qa_result": 352,
+      "live_issue": 26,
+      "dashboard": 2
+    },
+    "file_kinds": {
+      "issue_unit_planning": 2280,
+      "bat_result": 123,
+      "patch_note": 119,
+      "bug_verification": 116,
+      "qa_check_list": 96,
+      "update_checklist": 45,
+      "live_issue_community": 22,
+      "common_ref_doc": 22,
+      "live_issue_cs": 1
+    },
+    "build_path_pattern": "{게임}/Update Review/{YYYYMMDD}/{정규|핫픽스 N차 빌드 전달}/...",
+    "recent_builds": {
+      "에픽세븐": [
+        "20260604",
+        "20260514",
+        "20260423",
+        "20260402",
+        "20260312"
+      ],
+      "카제나": [
+        "20260527",
+        "20260504",
+        "20260429",
+        "20260415",
+        "20260408"
+      ]
+    }
+  },
+  "jira": {
+    "game_tags": {
+      "로드나인": 4558,
+      "카제나": 3017,
+      "에픽세븐": 2184,
+      "공통": 456,
+      "기타": 103
+    }
+  },
+  "wiki": {
+    "total": 3226,
+    "categories": {
+      "general": 2064,
+      "qa": 1095,
+      "hotfix": 60,
+      "release": 7
+    }
+  }
+}

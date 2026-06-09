@@ -24,6 +24,22 @@ _ask_semaphore = threading.Semaphore(3)
 # ── SYSTEM_PROMPT (BISKIT 전략 인코딩) ────────────────────────────────────
 SYSTEM_PROMPT = """당신은 게임 데이터/문서/이슈를 통합 분석하는 AI 어시스턴트입니다.
 
+[🔴 GDI 메타 축 탐색 — 폴더/메타 우선 (절대 규칙)]
+- "기획서/사양서" → file_kind=issue_unit_planning, folder_role=planning
+- "N차 빌드" → build_type+build_seq (정규/핫픽스 N차)
+- 파일명 모를 때 gdi_search_by_filename 금지. gdi_get_build_index로 폴더 단위 조회.
+- 1건 찾고 종료 금지. 같은 빌드 자료군은 get_related_nodes(same_folder)로 확장.
+- knowledge_grid의 게임별 build_date 목록 참조하여 날짜 추정.
+- issue_number(#NNNNNN) 검색 0건이면 종료 금지 → gdi_get_build_index로 해당 날짜 기획서 목록 조회 후 파일명에서 직접 탐색 (이슈번호 없는 기획서 12% fallback).
+
+[🔴 BISKIT ↔ GDI 교차 분석 체인 (다차원 질문 — 절대 규칙)]
+- "업데이트 후 지표 변화/이상치" 질문 → 단일 소스 답변 금지. 반드시 교차:
+  1. BISKIT execute_query로 지표 이상치 + 변화 날짜 확보
+  2. 그 날짜로 gdi_get_build_index 호출 → 해당 빌드 업데이트 내용(기획서/패치노트) 확인
+  3. 지표 변화 ↔ 업데이트 내용을 연결하여 해석 (사용자 미요청이라도 원인 후보 제시)
+- "X 업데이트 후 커뮤니티 반응" → Wiki 릴리즈(날짜) + BISKIT 커뮤니티 동향(그 날짜 이후) 둘 다 조회.
+- 한 소스만 답하고 종료하면 불완전 답변. 지표 질문엔 항상 "무엇이 바뀌었나"(GDI/Wiki)를 교차.
+
 [도구 사용 전략]
 - 넓은 질문은 구조 파악 먼저: biskit_get_project_menu_tree → search_datasets 순서
 - 첫 검색 빈약하면 다른 키워드로 재검색 (동의어·상위·하위 개념 변환)
@@ -82,6 +98,10 @@ _CATALOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              "..", "data", "biskit_catalog.json")
 _CATALOG_SUMMARY = None  # 메모리 캐싱 (1회 로드)
 
+_GRID_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          "..", "data", "knowledge_grid.json")
+_GRID_SUMMARY = None  # 메모리 캐싱 (1회 로드)
+
 
 def _load_catalog_summary() -> str:
     """biskit_catalog.json → Tier1 요약 문자열. 실패 시 '' (graceful degradation)."""
@@ -122,6 +142,42 @@ def _load_catalog_summary() -> str:
     return _CATALOG_SUMMARY
 
 
+def _load_grid_summary() -> str:
+    """knowledge_grid.json → 그리드 요약 문자열. 실패 시 '' (graceful degradation)."""
+    global _GRID_SUMMARY
+    if _GRID_SUMMARY is not None:
+        return _GRID_SUMMARY
+    try:
+        with open(_GRID_PATH, encoding="utf-8") as f:
+            grid = _json.load(f)
+        lines = ["\n[지식 그리드 (GDI/Jira/Wiki 메타 인덱스 — 폴더 탐색 참조용)]"]
+        gdi = grid.get("gdi", {})
+        games = gdi.get("games", {})
+        if games:
+            lines.append("- GDI 게임별 문서수: " + ", ".join(f"{k}={v}" for k, v in games.items()))
+        fk = gdi.get("file_kinds", {})
+        if fk:
+            lines.append("- file_kinds: " + ", ".join(f"{k}={v}" for k, v in list(fk.items())[:8]))
+        rb = gdi.get("recent_builds", {})
+        if rb:
+            for game, dates in rb.items():
+                lines.append(f"- {game} 최근빌드: {', '.join(str(d) for d in dates[:5])}")
+        bp = gdi.get("build_path_pattern")
+        if bp:
+            lines.append(f"- 빌드경로패턴: {bp}")
+        jira_tags = grid.get("jira", {}).get("game_tags", {})
+        if jira_tags:
+            lines.append("- Jira 게임별: " + ", ".join(f"{k}={v}" for k, v in jira_tags.items()))
+        wiki_cats = grid.get("wiki", {}).get("categories", {})
+        if wiki_cats:
+            lines.append("- Wiki 카테고리: " + ", ".join(f"{k}={v}" for k, v in wiki_cats.items()))
+        _GRID_SUMMARY = "\n".join(lines)
+    except Exception as e:
+        logger.warning(f"[agentic] 그리드 로드 실패 ({e}) — 그리드 없이 동작 (degradation)")
+        _GRID_SUMMARY = ""
+    return _GRID_SUMMARY
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # _validate_tool_args: Claude 생성 인자 보안 검증 (Step 7 보안 C-2/M-1/M-2)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -153,6 +209,11 @@ def _validate_tool_args(name: str, args: dict) -> str:
         jql = _re.sub(r"\s+", "", raw)  # 모든 공백 제거 → 공백 우회 차단
         if any(p in jql for p in ("or1=1", ";", "--", "delete", "update", "insert", "/*", "*/")):
             return "[보안] 허용되지 않은 쿼리 패턴입니다."
+    # task-193: get_related_nodes rel_type enum 화이트리스트
+    if name == "get_related_nodes":
+        rt = str(args.get("rel_type", ""))
+        if rt not in ("same_folder", "same_issue", "same_game_date"):
+            return "[보안] rel_type은 same_folder/same_issue/same_game_date만 허용됩니다."
     return ""
 
 
@@ -455,6 +516,58 @@ def _build_registry() -> ToolRegistry:
         },
         lambda a: _gdi.list_files_in_folder(a["folder_path"]),
     )
+    reg.register(
+        "gdi_get_build_index",
+        "특정 게임의 빌드 폴더 목록과 파일을 메타 축으로 조회. "
+        "game_tag/build_date/file_kind 필터. 파일명 모를 때 폴더 단위로 탐색. "
+        "예: 카제나 0527 기획서 → game_tag=카제나, build_date=20260527, file_kind=issue_unit_planning. "
+        "issue_number 검색 0건 시 이 도구로 날짜 기획서 목록 조회 후 파일명 직접 탐색(fallback).",
+        {
+            "type": "object",
+            "properties": {
+                "game_tag": {"type": "string", "description": "'카제나'|'에픽세븐'|'로드나인'"},
+                "build_date": {"type": "string", "description": "YYYYMMDD 형식 (선택)"},
+                "file_kind": {"type": "string", "description": "issue_unit_planning 등 (선택)"},
+                "build_type": {"type": "string", "description": "'정규'|'핫픽스' (선택)"},
+                "build_seq": {"type": "string", "description": "'2'|'3-1' 등 차수 (선택)"},
+                "limit": {"type": "integer", "description": "최대 결과 수 (기본 20)"},
+            },
+            "required": ["game_tag"],
+        },
+        lambda a: gc.search_by_build_meta(
+            game_tag=a["game_tag"],
+            build_date=a.get("build_date"),
+            file_kind=a.get("file_kind"),
+            build_type=a.get("build_type"),
+            build_seq=a.get("build_seq"),
+            limit=int(a.get("limit", 20)),
+        ),
+    )
+    reg.register(
+        "get_related_nodes",
+        "한 노드와 연관된 노드 조회. "
+        "same_folder(folder_group 동일=같은 빌드), "
+        "same_issue(issue_number 동일=이슈 차수), "
+        "same_game_date(game_tag+build_date 동일=같은 사이클). "
+        "예: 기획서 1건 source_id → same_folder로 같은 빌드 전체 자료.",
+        {
+            "type": "object",
+            "properties": {
+                "source_id": {"type": "string", "description": "기준 노드 source_id"},
+                "rel_type": {
+                    "type": "string",
+                    "enum": ["same_folder", "same_issue", "same_game_date"],
+                },
+                "limit": {"type": "integer", "description": "최대 결과 수 (기본 20)"},
+            },
+            "required": ["source_id", "rel_type"],
+        },
+        lambda a: gc.get_related(
+            source_id=a["source_id"],
+            rel_type=a["rel_type"],
+            limit=int(a.get("limit", 20)),
+        ),
+    )
 
     # ── Jira 3개 ─────────────────────────────────────────────────────────
     reg.register(
@@ -580,7 +693,7 @@ def run_agentic(
         f"사용자가 연도 없이 '5월', '지난달' 등으로 물으면 현재 연도({_today[:4]}) 기준으로 해석하세요. "
         f"명시적 과거 연도가 없으면 과거 연도(2025 등)로 가정하지 마세요."
     )
-    system = SYSTEM_PROMPT + _load_catalog_summary() + _date_ctx + (system_hint or "")
+    system = SYSTEM_PROMPT + _load_catalog_summary() + _load_grid_summary() + _date_ctx + (system_hint or "")
     messages = [{"role": "user", "content": question}]
 
     # 스레드 안전 지역변수

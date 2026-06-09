@@ -1578,3 +1578,141 @@ def get_search_context_text(data: dict) -> str:
         parts.append(entry)
 
     return "\n\n---\n\n".join(parts)
+
+
+# ── 그리드 메타 검색 (task-193) ──────────────────────────────
+
+def search_by_build_meta(
+    game_tag: str,
+    build_date: str | None = None,
+    file_kind: str | None = None,
+    build_type: str | None = None,
+    build_seq: str | None = None,
+    limit: int = 20,
+) -> list[dict]:
+    """빌드 메타 축으로 GDI 노드 조회 (캐시 DB 직접 쿼리).
+
+    Args:
+        game_tag:   '카제나' | '에픽세븐' | '로드나인'
+        build_date: 'YYYYMMDD' (None이면 전체)
+        file_kind:  'issue_unit_planning' 등 (None이면 전체)
+        build_type: '정규' | '핫픽스' (None이면 전체)
+        build_seq:  '2' | '3-1' 등 (None이면 전체)
+        limit:      결과 최대 건수
+
+    Returns:
+        [{"id", "source_id", "title", "path", "file_kind",
+          "build_date", "build_type", "build_seq", "folder_group"}, ...]
+    """
+    if not _GDI_CACHE_ENABLED or _gdi_cache is None:
+        logger.warning("[search_by_build_meta] 캐시 비활성 — 결과 없음")
+        return []
+
+    conn = _gdi_cache._conn()
+    try:
+        wheres = ["source_type = 'gdi'", "game_tag = ?"]
+        params: list = [game_tag]
+
+        if build_date:
+            wheres.append("build_date = ?")
+            params.append(build_date)
+        if file_kind:
+            wheres.append("file_kind = ?")
+            params.append(file_kind)
+        if build_type:
+            wheres.append("build_type = ?")
+            params.append(build_type)
+        if build_seq:
+            wheres.append("build_seq = ?")
+            params.append(build_seq)
+
+        params.append(limit)
+        sql = (
+            "SELECT id, source_id, title, path, file_kind, ref_date, "
+            "build_date, build_type, build_seq, folder_group "
+            "FROM nodes WHERE " + " AND ".join(wheres) +
+            " ORDER BY ref_date DESC, build_date DESC LIMIT ?"
+        )
+        rows = conn.execute(sql, params).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_related(
+    source_id: str,
+    rel_type: str,
+    limit: int = 20,
+) -> list[dict]:
+    """관련 노드 조회 (컬럼 그룹키 쿼리 — 관계 테이블 없음).
+
+    Args:
+        source_id: 기준 노드 source_id
+        rel_type:  'same_folder' | 'same_issue' | 'same_game_date'
+        limit:     결과 최대 건수
+
+    Returns:
+        [{"id", "source_id", "title", "path", "file_kind", ...}, ...]
+    """
+    if not _GDI_CACHE_ENABLED or _gdi_cache is None:
+        logger.warning("[get_related] 캐시 비활성 — 결과 없음")
+        return []
+
+    conn = _gdi_cache._conn()
+    try:
+        # 기준 노드 조회
+        base = conn.execute(
+            "SELECT id, game_tag, build_date, folder_group, issue_number "
+            "FROM nodes WHERE source_type='gdi' AND source_id = ?",
+            (source_id,),
+        ).fetchone()
+        if not base:
+            logger.warning("[get_related] source_id=%s 노드 없음", source_id)
+            return []
+
+        base = dict(base)
+
+        if rel_type == "same_folder":
+            fg = base.get("folder_group")
+            if not fg:
+                return []
+            rows = conn.execute(
+                "SELECT id, source_id, title, path, file_kind, "
+                "build_date, build_type, build_seq, folder_group "
+                "FROM nodes WHERE source_type='gdi' "
+                "AND folder_group = ? AND source_id != ? LIMIT ?",
+                (fg, source_id, limit),
+            ).fetchall()
+
+        elif rel_type == "same_issue":
+            inum = base.get("issue_number")
+            if not inum:
+                return []
+            rows = conn.execute(
+                "SELECT id, source_id, title, path, file_kind, "
+                "build_date, build_type, build_seq, folder_group "
+                "FROM nodes WHERE source_type='gdi' "
+                "AND issue_number = ? AND source_id != ? LIMIT ?",
+                (inum, source_id, limit),
+            ).fetchall()
+
+        elif rel_type == "same_game_date":
+            game = base.get("game_tag")
+            date = base.get("build_date")
+            if not game or not date:
+                return []
+            rows = conn.execute(
+                "SELECT id, source_id, title, path, file_kind, "
+                "build_date, build_type, build_seq, folder_group "
+                "FROM nodes WHERE source_type='gdi' "
+                "AND game_tag = ? AND build_date = ? AND source_id != ? LIMIT ?",
+                (game, date, source_id, limit),
+            ).fetchall()
+
+        else:
+            logger.warning("[get_related] 알 수 없는 rel_type: %s", rel_type)
+            return []
+
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
