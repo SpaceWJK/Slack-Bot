@@ -2720,6 +2720,67 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
             daemon=True,
         ).start()
 
+    # ── /ask (task-192 파일럿 — agentic 통합검색) ──────────────
+    # 기존 4커맨드(/wiki /gdi /jira /biskit) 핸들러 무변경. 격리 파일럿.
+
+    import agentic_engine as _ae
+
+    _ask_semaphore = _ae._ask_semaphore
+
+    @app.command("/ask")
+    def handle_ask_command(ack, respond, command, client):
+        """
+        /ask [자연어 질문] → BISKIT+Wiki+GDI+Jira 통합 agentic 검색 (파일럿)
+        예: /ask 카제나 5월 커뮤니티 긍부정 동향
+        """
+        ack()
+
+        text = _sanitize_user_input((command.get("text") or "").strip())
+        if not text:
+            respond(text="❌ 질문을 입력하세요. 예: `/ask 카제나 5월 매출 동향`")
+            return
+
+        if not _ask_semaphore.acquire(blocking=False):
+            respond(text="현재 처리 중인 요청이 많습니다. 잠시 후 다시 시도해주세요.")
+            return
+
+        channel_id = command.get("channel_id", "")
+        if message_expiry.MESSAGE_EXPIRY_ENABLED:
+            respond = ExpiringResponder(respond, client, channel_id)
+            respond.send_initial("분석 중...")
+
+        # heartbeat: chat_update(동일 ts) — rate limit 최소화 (10초 throttle은 _ae 내부 처리)
+        def _heartbeat(msg: str):
+            try:
+                respond(text=msg)
+            except Exception:
+                pass
+
+        def _run():
+            try:
+                answer = _ae.run_agentic(
+                    question=text,
+                    whitelist=None,  # 전체 17개 도구 (biskit 7 + wiki 4 + gdi 3 + jira 3)
+                    system_hint="",
+                    respond=respond,
+                    heartbeat=_heartbeat,
+                )
+                formatted = format_ai_response(
+                    question=text,
+                    raw_answer=answer,
+                    source_type="ask",
+                    source_label="통합검색",
+                    source_url="",
+                )
+                respond(text=formatted)
+            except Exception as e:
+                logger.error(f"[ask] 처리 실패: {e}", exc_info=True)
+                respond(text=f"처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
+            finally:
+                _ask_semaphore.release()
+
+        threading.Thread(target=_run, daemon=True).start()
+
     # ── /ai ────────────────────────────────────────────────────
 
     @app.command("/ai")

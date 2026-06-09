@@ -114,7 +114,7 @@ def format_ai_response(
     # ── 출처 라인 ──
     type_label = {
         "wiki": "Wiki", "jira": "Jira", "gdi": "GDI",
-        "biskit": "BISKIT", "ai": "Claude AI",
+        "biskit": "BISKIT", "ai": "Claude AI", "ask": "통합검색",
     }.get(source_type, source_type)
     if source_url:
         # 이슈 키 단독 조회 시: 이슈 URL 직접 링크
