@@ -4,50 +4,56 @@ game_aliases.py — 게임명 별칭 매핑 (Wiki + Jira 공용)
 게임의 한국어명·영어명·약어 등 다양한 입력을 정규화하여
 캐시 DB 경로 필터링, Jira 프로젝트 키 매핑에 활용합니다.
 
+게임 정의 SSoT: D:/Vibe Dev/_lib/game_catalog.json (task-195, 2026-06-11)
+신규 게임 추가는 카탈로그 JSON 1곳 수정. 이 모듈은 봇 전용 뷰 + 헬퍼만 유지.
+
 사용법:
     from game_aliases import resolve_game, get_wiki_path_keywords, get_jira_project_key
 
     info = resolve_game("에픽세븐")
-    # => {"canonical": "에픽세븐", "jira_key": "EP7", "wiki_keywords": ["에픽세븐", "EP"], ...}
+    # => {"canonical": "에픽세븐", "jira_key": "GEP", "wiki_path_keywords": [...], ...}
 """
 
-import re
+import json
+import os
+from pathlib import Path
 
-# ── 게임 정의 ────────────────────────────────────────────────────
-# canonical: 정규 이름 (한국어 표시용)
-# aliases: 사용자가 입력할 수 있는 모든 이름 변형 (소문자 비교)
-# jira_key: Jira 프로젝트 키
-# wiki_path_keywords: Wiki 캐시 DB path에서 게임을 식별하는 키워드
-#   (nodes 테이블의 title 또는 ancestor 경로에 포함됨)
+_CATALOG_PATH = Path(
+    os.environ.get("GAME_CATALOG_PATH", "D:/Vibe Dev/_lib/game_catalog.json")
+)
 
-GAMES = [
-    {
-        "canonical": "에픽세븐",
-        "aliases": [
-            "에픽세븐", "에픽 세븐", "에픽", "epic", "epicseven",
-            "epic seven", "epic7", "ep7", "gep",
-        ],
-        "jira_key": "GEP",
-        "wiki_path_keywords": ["에픽세븐", "EP |", "EP7"],
-        "wiki_ancestor_id": 58043932,       # 에픽세븐 루트 페이지 ID
-    },
-    {
-        "canonical": "카제나",
-        "aliases": [
-            "카제나", "카오스제로", "카오스 제로", "카제나 카오스 나이트메어",
-            "chaoszero", "chaos zero", "chaoszero nightmare",
-            "chaos zero nightmare", "gcz", "cz",
-        ],
-        "jira_key": "GCZ",
-        "wiki_path_keywords": ["카제나", "CZ |", "GCZ", "카오스", "Chaoszero"],
-        "wiki_ancestor_id": 650589593,      # CZ | Hotfix 이슈 부모 페이지 ID
-    },
+# ── 비게임 Jira 프로젝트 (카탈로그 스코프 밖 — 봇 로컬 정의) ─────
+# 리젝(PRH)은 게임 프로젝트가 아니므로 카탈로그 미포함 (Master 확정 2026-06-11).
+# 봇의 Jira/Wiki 검색 기능은 유지해야 하므로 여기에 잔류.
+_LOCAL_PROJECTS = [
     {
         "canonical": "리젝",
         "aliases": ["리젝", "reject", "prh"],
         "jira_key": "PRH",
         "wiki_path_keywords": ["리젝", "PRH"],
         "wiki_ancestor_id": None,
+    },
+]
+
+
+# 카탈로그 로드 실패 시 fallback (pm2 데몬 — import crash 시 무한 재시작 루프 방지)
+_FALLBACK_GAMES = [
+    {
+        "canonical": "에픽세븐",
+        "aliases": ["에픽세븐", "에픽 세븐", "에픽", "epic", "epicseven",
+                    "epic seven", "epic7", "ep7", "gep"],
+        "jira_key": "GEP",
+        "wiki_path_keywords": ["에픽세븐", "EP |", "EP7"],
+        "wiki_ancestor_id": 58043932,
+    },
+    {
+        "canonical": "카제나",
+        "aliases": ["카제나", "카오스제로", "카오스 제로", "카제나 카오스 나이트메어",
+                    "chaoszero", "chaos zero", "chaoszero nightmare",
+                    "chaos zero nightmare", "gcz", "cz"],
+        "jira_key": "GCZ",
+        "wiki_path_keywords": ["카제나", "CZ |", "GCZ", "카오스", "Chaoszero"],
+        "wiki_ancestor_id": 650589593,
     },
     {
         "canonical": "로드나인",
@@ -58,15 +64,52 @@ GAMES = [
     },
     {
         "canonical": "로드나인 아시아",
-        "aliases": [
-            "로드나인아시아", "로드나인 아시아", "lord nine asia",
-            "lordnine asia", "lna",
-        ],
+        "aliases": ["로드나인아시아", "로드나인 아시아", "lord nine asia",
+                    "lordnine asia", "lna"],
         "jira_key": "LNA",
         "wiki_path_keywords": ["로드나인 아시아", "LNA", "Lordnine_Asia"],
         "wiki_ancestor_id": None,
     },
 ]
+
+
+def _load_games() -> list[dict]:
+    """카탈로그 게임 + 봇 로컬 항목 → 기존 GAMES 형식. 로드 실패 시 fallback."""
+    try:
+        with open(_CATALOG_PATH, encoding="utf-8") as f:
+            catalog = json.load(f)
+        games = [
+            {
+                "canonical": g["canonical_ko"],
+                "aliases": g["aliases"],
+                "jira_key": g["jira_project_key"],
+                "wiki_path_keywords": g["wiki_path_keywords"],
+                "wiki_ancestor_id": g["wiki_ancestor_id"],
+                "gdi_space_key": g.get("gdi_space_key"),
+            }
+            for g in catalog["games"]
+        ]
+        if not games:
+            raise ValueError("카탈로그 게임 0건")
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        import logging
+        logging.getLogger("slack_bot").error(
+            "게임 카탈로그 로드 실패 (%s): %s — fallback GAMES 사용", _CATALOG_PATH, exc
+        )
+        games = _FALLBACK_GAMES
+    return games + _LOCAL_PROJECTS
+
+
+GAMES = _load_games()
+
+# ── GDI 폴더 prefix (SSoT 도출 — predeploy P2-8) ─────────────────
+# gdi_space_key('chaoszero' 등) → 실제 GDI 폴더 1depth('Chaoszero' 등).
+# 신규 게임은 game_catalog.json에 gdi_space_key 추가만으로 반영.
+GDI_GAME_PREFIXES = sorted({
+    g["gdi_space_key"].capitalize()
+    for g in GAMES
+    if g.get("gdi_space_key")
+})
 
 # ── 별칭 → 게임 인덱스 (빌드) ────────────────────────────────────
 _ALIAS_MAP: dict[str, dict] = {}

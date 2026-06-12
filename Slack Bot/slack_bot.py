@@ -307,7 +307,7 @@ def _wiki_get_page(client, page_part: str, respond):
         return
 
     text      = page["text"]
-    MAX_LEN   = 2800
+    MAX_LEN   = 2700   # 헤더+URL 오버헤드 고려 (section.text 3000자 한도 — predeploy)
     truncated = len(text) > MAX_LEN
     if truncated:
         text = text[:MAX_LEN]
@@ -322,6 +322,51 @@ def _wiki_get_page(client, page_part: str, respond):
     respond(text=msg)
 
 
+# ── Claude API 공통 코어 (P2-7: wiki/gdi/jira 3중복 통합) ────────────────
+# 모델명 단일 정의 (P2-8: 하드코딩 제거 — 환경변수 override 가능)
+CLAUDE_FAST_MODEL = os.getenv("CLAUDE_FAST_MODEL", "claude-haiku-4-5-20251001")
+CLAUDE_SMART_MODEL = os.getenv("CLAUDE_SMART_MODEL", "claude-sonnet-4-5")
+
+
+def _call_claude_api(prompt: str, source_type: str,
+                     model: str = "", max_tokens: int = 1024):
+    """Claude API 단일 호출 코어.
+
+    wiki/gdi/jira 핸들러가 공유 — TrackedAnthropic fallback,
+    토큰 사용량 로깅, 경과시간 측정을 한 곳에서 처리.
+
+    Returns:
+        (answer: str | None, elapsed_ms: int, error: Exception | None)
+        answer=None이면 호출 실패 (error에 원인).
+    """
+    import anthropic
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if not api_key:
+        return None, 0, RuntimeError("ANTHROPIC_API_KEY 미설정")
+
+    try:
+        try:
+            from cost_tracker import TrackedAnthropic
+            client_ai = TrackedAnthropic("slack-bot", api_key=api_key)
+        except Exception:
+            client_ai = anthropic.Anthropic(api_key=api_key)
+        t0 = time.time()
+        message = client_ai.messages.create(
+            model=model or CLAUDE_FAST_MODEL,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        elapsed = int((time.time() - t0) * 1000)
+        if hasattr(message, "usage"):
+            _log_token_usage(source_type, message.usage.input_tokens,
+                             message.usage.output_tokens)
+        return message.content[0].text, elapsed, None
+    except Exception as e:
+        logger.error(f"[{source_type}] Claude API 오류: {e}")
+        return None, 0, e
+
+
 def _wiki_call_claude(page_title: str, page_text: str, question: str,
                       summary: str = "", keywords: list | None = None):
     """
@@ -331,12 +376,6 @@ def _wiki_call_claude(page_title: str, page_text: str, question: str,
     summary/keywords가 제공되면 프롬프트 앞에 배치하여
     Claude가 페이지 맥락을 빠르게 파악하도록 합니다.
     """
-    import anthropic
-
-    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        return None
-
     MAX_PAGE_CHARS = 40000
     truncated = len(page_text) > MAX_PAGE_CHARS
     content   = page_text[:MAX_PAGE_CHARS] if truncated else page_text
@@ -366,24 +405,8 @@ def _wiki_call_claude(page_title: str, page_text: str, question: str,
         f"질문: {question}"
     )
 
-    try:
-        try:
-            from cost_tracker import TrackedAnthropic
-            client_ai = TrackedAnthropic("slack-bot", api_key=api_key)
-        except Exception:
-            client_ai = anthropic.Anthropic(api_key=api_key)
-        message   = client_ai.messages.create(
-            model      = "claude-haiku-4-5-20251001",
-            max_tokens = 1024,
-            messages   = [{"role": "user", "content": prompt}],
-        )
-        # 토큰 사용량 로깅
-        if hasattr(message, 'usage'):
-            _log_token_usage("wiki", message.usage.input_tokens, message.usage.output_tokens)
-        return message.content[0].text
-    except Exception as e:
-        logger.error(f"[wiki] Claude API 오류: {e}")
-        return None
+    answer, _elapsed, _err = _call_claude_api(prompt, "wiki")
+    return answer
 
 
 # 빈 콘텐츠 / 답변 불가 — fallback 트리거
@@ -638,7 +661,7 @@ def _gdi_folder_ai(client, folder_path: str, file_keyword: str,
 
     # 게임명 누락 보정: 파일 없으면 알려진 게임명을 접두사로 붙여 재시도
     if not files:
-        _GAME_PREFIXES = ["Chaoszero", "Epicseven"]
+        from game_aliases import GDI_GAME_PREFIXES as _GAME_PREFIXES  # SSoT (P2-8)
         first_seg = folder_path.split("/")[0] if "/" in folder_path else folder_path.rstrip("/")
         if first_seg not in _GAME_PREFIXES:
             for prefix in _GAME_PREFIXES:
@@ -874,7 +897,7 @@ def _gdi_folder_list(client, path: str, respond):
     # 게임명 누락 보정
     files = data.get("files", []) if isinstance(data, dict) else []
     if not files and page == 1:
-        _GAME_PREFIXES = ["Chaoszero", "Epicseven"]
+        from game_aliases import GDI_GAME_PREFIXES as _GAME_PREFIXES  # SSoT (P2-8)
         first_seg = path.split("/")[0] if "/" in path else path.rstrip("/")
         if first_seg not in _GAME_PREFIXES:
             for prefix in _GAME_PREFIXES:
@@ -892,37 +915,16 @@ def _gdi_claude_call(prompt: str, source_label: str, question: str,
                      respond, source_url: str = "",
                      display_question: str = ""):
     """Claude API 공통 호출 + 통합 포맷 응답 전송."""
-    import anthropic
-
-    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        respond(text=(
-            "❌ `ANTHROPIC_API_KEY` 환경변수가 설정되지 않았습니다.\n"
-            "환경변수에 Anthropic API 키를 추가하세요."
-        ))
-        return
-
-    _elapsed = 0
-    try:
-        try:
-            from cost_tracker import TrackedAnthropic
-            client_ai = TrackedAnthropic("slack-bot", api_key=api_key)
-        except Exception:
-            client_ai = anthropic.Anthropic(api_key=api_key)
-        t0 = time.time()
-        message   = client_ai.messages.create(
-            model      = "claude-haiku-4-5-20251001",
-            max_tokens = 1024,
-            messages   = [{"role": "user", "content": prompt}],
-        )
-        _elapsed = int((time.time() - t0) * 1000)
-        # 토큰 사용량 로깅
-        if hasattr(message, 'usage'):
-            _log_token_usage("gdi", message.usage.input_tokens, message.usage.output_tokens)
-        answer = message.content[0].text
-    except Exception as e:
-        logger.error(f"[gdi] Claude API 오류: {e}")
-        respond(text=f"❌ Claude API 오류\n```\n{e}\n```")
+    answer, _elapsed, _err = _call_claude_api(prompt, "gdi")
+    if answer is None:
+        if isinstance(_err, RuntimeError) and "API_KEY" in str(_err):
+            respond(text=(
+                "❌ `ANTHROPIC_API_KEY` 환경변수가 설정되지 않았습니다.\n"
+                "환경변수에 Anthropic API 키를 추가하세요."
+            ))
+        else:
+            # 예외 원문은 로그만 — Slack 노출 금지 (P0-4 동일 원칙)
+            respond(text="❌ AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
         return
 
     # ── OpsTracker: GDI 답변 결과 기록 ────────────────────
@@ -1129,37 +1131,16 @@ def _jira_claude_call(prompt: str, source_label: str, question: str,
 
     prefix: intent_summary 등 Claude 응답 앞에 붙일 텍스트 (M-3 시정).
     """
-    import anthropic
-
-    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        respond(text=(
-            ":x: `ANTHROPIC_API_KEY` 환경변수가 설정되지 않았습니다.\n"
-            "환경변수에 Anthropic API 키를 추가하세요."
-        ))
-        return
-
-    _elapsed = 0
-    try:
-        try:
-            from cost_tracker import TrackedAnthropic
-            client_ai = TrackedAnthropic("slack-bot", api_key=api_key)
-        except Exception:
-            client_ai = anthropic.Anthropic(api_key=api_key)
-        t0 = time.time()
-        message   = client_ai.messages.create(
-            model      = "claude-haiku-4-5-20251001",
-            max_tokens = 1024,
-            messages   = [{"role": "user", "content": prompt}],
-        )
-        _elapsed = int((time.time() - t0) * 1000)
-        # 토큰 사용량 로깅
-        if hasattr(message, 'usage'):
-            _log_token_usage("jira", message.usage.input_tokens, message.usage.output_tokens)
-        answer = message.content[0].text
-    except Exception as e:
-        logger.error(f"[jira] Claude API 오류: {e}")
-        respond(text=f":x: Claude API 오류\n```\n{e}\n```")
+    answer, _elapsed, _err = _call_claude_api(prompt, "jira")
+    if answer is None:
+        if isinstance(_err, RuntimeError) and "API_KEY" in str(_err):
+            respond(text=(
+                ":x: `ANTHROPIC_API_KEY` 환경변수가 설정되지 않았습니다.\n"
+                "환경변수에 Anthropic API 키를 추가하세요."
+            ))
+        else:
+            # 예외 원문은 로그만 — Slack 노출 금지 (P0-4 동일 원칙)
+            respond(text=":x: AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
         return
 
     # ── OpsTracker: Jira 답변 결과 기록 ───────────────────
@@ -1443,7 +1424,7 @@ def _biskit_plan_call(question: str, projects: list) -> dict:
         f'{{"project_id":"...","search_keyword":"...","date_from":"YYYY-MM-DD or null","date_to":"YYYY-MM-DD or null"}}'
     )
     msg = client_ai.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model=CLAUDE_FAST_MODEL,
         max_tokens=256,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -1508,7 +1489,7 @@ def _biskit_synth_call(question: str, exec_result: dict) -> str:
         f"{ANSWER_FORMAT_INSTRUCTION}"
     )
     msg = client_ai.messages.create(
-        model="claude-sonnet-4-5",
+        model=CLAUDE_SMART_MODEL,
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -1549,8 +1530,10 @@ def _biskit_query(question: str, user_id: str, respond):
             display_question=question,
         ))
     except Exception as e:
-        logger.error(f"[biskit] 조회 오류: {e}")
-        respond(text=f"❌ BISKIT 조회 오류\n```\n{e}\n```")
+        # 예외 원문은 로그만 — Slack 노출 금지 (LLM 응답/내부 주소 포함 가능)
+        logger.error(f"[biskit] 조회 오류: {e}", exc_info=True)
+        respond(text="❌ BISKIT 조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.\n"
+                     "(반복되면 관리자에게 문의해주세요)")
 
 
 # /ai 헬퍼 제거 (task-186 설계 오류 — 웹 검색 미지원)
@@ -1698,7 +1681,12 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
         text      = (command.get("text") or "").strip()
         user_id   = command.get("user_id", "")
         user_name = command.get("user_name", "")
-        wiki_client = wc.ConfluenceWikiClient()
+        try:
+            wiki_client = wc.ConfluenceWikiClient()
+        except Exception as e:
+            logger.error(f"[wiki] 클라이언트 초기화 실패: {e}")
+            respond(text="❌ Wiki 서비스 연결에 실패했습니다. 잠시 후 다시 시도해주세요.")
+            return
 
         if not text or text.lower() == "help":
             _wiki_help(respond)
@@ -2070,7 +2058,7 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
         # SyncEngine 생성
         try:
             import sys as _sys
-            _sys.path.insert(0, "D:/Vibe Dev/QA Ops/mcp-cache-layer")
+            _sys.path.insert(0, os.environ.get("MCP_CACHE_PATH", "D:/Vibe Dev/QA Ops/mcp-cache-layer"))
             from src.sync_engine import SyncEngine
             engine = SyncEngine(wc._wiki_cache, wc._get_mcp())
         except Exception as e:
@@ -2118,7 +2106,12 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
         text      = (command.get("text") or "").strip()
         user_id   = command.get("user_id", "")
         user_name = command.get("user_name", "")
-        gdi_client = gc.GdiClient()
+        try:
+            gdi_client = gc.GdiClient()
+        except Exception as e:
+            logger.error(f"[gdi] 클라이언트 초기화 실패: {e}")
+            respond(text="❌ GDI 서비스 연결에 실패했습니다. 잠시 후 다시 시도해주세요.")
+            return
 
         if not text or text.lower() == "help":
             _gdi_help(respond)
@@ -2445,7 +2438,12 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
         text      = (command.get("text") or "").strip()
         user_id   = command.get("user_id", "")
         user_name = command.get("user_name", "")
-        jira_cli  = jc.JiraClient()
+        try:
+            jira_cli = jc.JiraClient()
+        except Exception as e:
+            logger.error(f"[jira] 클라이언트 초기화 실패: {e}")
+            respond(text="❌ Jira 서비스 연결에 실패했습니다. 잠시 후 다시 시도해주세요.")
+            return
 
         # ── help ──
         if not text or text.lower() == "help":

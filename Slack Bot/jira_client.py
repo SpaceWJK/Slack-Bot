@@ -21,6 +21,8 @@ wiki_client.py, gdi_client.py 와 동일한 패턴으로, mcp_session.McpSession
 """
 
 import os
+
+_CLAUDE_FAST_MODEL = os.getenv("CLAUDE_FAST_MODEL", "claude-haiku-4-5-20251001")
 import re
 import json
 import logging
@@ -29,8 +31,7 @@ import datetime as _dt
 from dataclasses import dataclass, field, replace
 from typing import Optional
 
-from mcp_session import McpSession
-from game_aliases import resolve_game, detect_game_in_text
+from mcp_core import McpSession
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ _JIRA_MEM_TTL = 300           # 기본값 (5분)
 
 try:
     import sys as _sys
-    _cache_path = "D:/Vibe Dev/QA Ops/mcp-cache-layer"
+    _cache_path = os.environ.get("MCP_CACHE_PATH", "D:/Vibe Dev/QA Ops/mcp-cache-layer")
     if _cache_path not in _sys.path:
         _sys.path.insert(0, _cache_path)
     from src.cache_manager import CacheManager as _CacheManager
@@ -70,7 +71,7 @@ except Exception as _e:
 _mirror_search = None    # scripts.jira_mirror.search_mirror
 _mirror_age_fn = None    # scripts.jira_mirror.get_mirror_age_str
 try:
-    _mirror_cache_path = "D:/Vibe Dev/QA Ops/mcp-cache-layer"
+    _mirror_cache_path = os.environ.get("MCP_CACHE_PATH", "D:/Vibe Dev/QA Ops/mcp-cache-layer")
     if _mirror_cache_path not in _sys.path:
         _sys.path.insert(0, _mirror_cache_path)
     from scripts.jira_mirror import (
@@ -96,6 +97,20 @@ def _mem_get(key: str):
 def _mem_set(key: str, data):
     """L1 메모리 캐시 저장."""
     _JIRA_MEM_CACHE[key] = (data, time.time())
+
+
+def _check_jql_danger(jql: str):
+    """JQL 위험패턴 검사. 위험하면 에러 문자열 반환, 안전하면 None.
+
+    agentic_engine._validate_tool_args의 jira_search_issues 검사와 동일 패턴.
+    /jira 직접 경로(question_to_jql → search_issues)에도 적용하여 비대칭 해소.
+    """
+    raw = jql.lower()
+    normalized = re.sub(r"\s+", "", raw)  # 공백 우회 차단
+    _DANGER = ("or1=1", ";", "--", "delete", "update", "insert", "/*", "*/")
+    if any(p in normalized for p in _DANGER):
+        return "허용되지 않은 쿼리 패턴입니다."
+    return None
 
 
 def _jql_to_query_text(jql: str) -> str:
@@ -150,6 +165,20 @@ def _get_jira_query_logger() -> logging.Logger:
     return _jira_query_logger
 
 
+def _sanitize_log_field(value):
+    """
+    jira_query.log 1줄 1엔트리 불변식 보호 (gdi_client._sanitize_log_field 동일 패턴, OWASP A09).
+
+    분리자 ' | ' (space-padded pipe)는 외부에서 사용. 사용자 입력 안의 ASCII '|'가
+    로그 파서(split('|'))에서 필드 desync를 일으키는 것을 차단.
+    - ASCII '|' (U+007C) → 전각 '｜' (U+FF5C) 치환
+    - 빈 값/None은 그대로 반환
+    """
+    if not value:
+        return value
+    return value.replace('|', '｜')
+
+
 def log_jira_query(*, user_id: str = "", user_name: str = "",
                    action: str, query: str, result: str = "",
                    error: str = "", elapsed_ms: int = 0,
@@ -161,13 +190,22 @@ def log_jira_query(*, user_id: str = "", user_name: str = "",
     """
     gl     = _get_jira_query_logger()
     status = "ERROR" if error else "OK"
-    user   = f"{user_name}({user_id})" if user_id else (user_name or "unknown")
 
-    msg = f"{status} | {action} | user={user} | query={query}"
-    if result:
-        msg += f" | result={result}"
-    if error:
-        msg += f" | error={error}"
+    # Slack display_name/query는 user-controlled — sanitize (gdi_client와 동일, CWE-117)
+    s_user_name = _sanitize_log_field(user_name)
+    s_user_id   = _sanitize_log_field(user_id)
+    user = f"{s_user_name}({s_user_id})" if s_user_id else (s_user_name or "unknown")
+
+    s_action = _sanitize_log_field(action)
+    s_query  = _sanitize_log_field(query)
+    s_result = _sanitize_log_field(result)
+    s_error  = _sanitize_log_field(error)
+
+    msg = f"{status} | {s_action} | user={user} | query={s_query}"
+    if s_result:
+        msg += f" | result={s_result}"
+    if s_error:
+        msg += f" | error={s_error}"
     if cache_status:
         msg += f" | cache={cache_status}"
     if elapsed_ms > 0:
@@ -618,7 +656,7 @@ def generate_jql_with_ai(question: str, project_key: str = "") -> "str | None":
     try:
         client = _anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=_CLAUDE_FAST_MODEL,
             max_tokens=256,
             system=system_prompt,
             messages=[{"role": "user", "content": user_msg}],
@@ -756,7 +794,7 @@ def extract_intent(question: str, project_key: str = "") -> JiraIntent:
         import anthropic as _anthropic
         client = _anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=_CLAUDE_FAST_MODEL,
             max_tokens=512,
             system=system,
             messages=[{"role": "user", "content": user_msg}],
@@ -1146,6 +1184,12 @@ class JiraClient:
 
         Returns: (parsed_data, error_str)
         """
+        # /jira 직접 경로 위험패턴 검사 (agentic 경로와 동일 패턴 적용 — CWE-943 비대칭 해소)
+        danger = _check_jql_danger(jql)
+        if danger:
+            logger.warning("[jira] JQL 위험패턴 차단: %s", jql[:80])
+            return None, f"[보안] {danger}"
+
         raw, err = self._mcp.call_tool("jql_search", {
             "jql_request": jql,
             "limit": max_results,

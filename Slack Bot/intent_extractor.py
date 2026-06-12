@@ -11,6 +11,8 @@ jira_client.py 패턴 정합:
 import json
 import logging
 import os
+
+_CLAUDE_FAST_MODEL = os.getenv("CLAUDE_FAST_MODEL", "claude-haiku-4-5-20251001")
 import re as _re
 import time
 import dataclasses
@@ -562,7 +564,7 @@ def extract_intent(text: str, domain: str = "wiki"):
     try:
         client = _anthropic.Anthropic(api_key=api_key, timeout=5.0)
         response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=_CLAUDE_FAST_MODEL,
             max_tokens=512,
             temperature=0.0,  # task-132 PR1-I (advisor freeze): LLM 비결정성 차단
             system=system,

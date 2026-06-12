@@ -92,6 +92,27 @@ class SlackSender:
                     done += 1
         return total, done
 
+    # section 텍스트 한도 (Slack 공식 3000자, 안전 여유 200자)
+    _SECTION_TEXT_LIMIT = 2800
+
+    def _truncate_lines(self, lines: list, limit: int) -> str:
+        """
+        lines 를 '\n'.join 했을 때 limit 자를 초과하면 절단 후 '...외 N건' 추가.
+        한도 이내면 그대로 join 반환.
+        """
+        result = "\n".join(lines)
+        if len(result) <= limit:
+            return result
+        # 한 줄씩 추가하면서 한도 체크
+        kept: list = []
+        for line in lines:
+            candidate = "\n".join(kept + [line])
+            if len(candidate) > limit - 20:  # '...외 NN건' 공간 확보
+                break
+            kept.append(line)
+        omitted = len(lines) - len(kept)
+        return "\n".join(kept) + f"\n...외 {omitted}건"
+
     def _build_missed_section_blocks(self, missed_items: list, action_id: str = "checklist_toggle") -> list:
         """
         누락 체크리스트 섹션 블록 생성 (텍스트 리스트 형식, 체크박스 없음).
@@ -106,6 +127,8 @@ class SlackSender:
             - block_id="missed_header"   → "⚠️ 전일 누락 항목" 헤더
             - block_id=f"missed_grp_{i}" → 그룹 레이블 (스케줄별)
             - block_id=f"missed_{i}"     → 누락 항목 텍스트 목록 (체크박스 없음)
+
+        방어: section 텍스트 2800자 초과 시 '...외 N건' 절단.
         """
         blocks = [
             {"type": "divider", "block_id": "missed_divider"},
@@ -136,10 +159,11 @@ class SlackSender:
                 lines.append(f"• *{item['text']}*{mention_str}")
 
             if lines:
+                text = self._truncate_lines(lines, self._SECTION_TEXT_LIMIT)
                 blocks.append({
                     "type":     "section",
                     "block_id": f"missed_{i}",
-                    "text":     {"type": "mrkdwn", "text": "\n".join(lines)},
+                    "text":     {"type": "mrkdwn", "text": text},
                 })
 
         return blocks
@@ -262,13 +286,27 @@ class SlackSender:
         ]
 
         # 담당자 멘션 블록 — chat.update 시 재알림 없으므로 중복 걱정 불필요
+        # 방어: context elements[].text 1800자(Slack 한도 2000자, 안전 여유 200자) 초과 시 '외 N명' 절단
         if unique_mentions:
+            _MENTION_LIMIT = 1800
+            prefix = "📌 담당자  "
+            mention_text = prefix + "  ".join(unique_mentions)
+            if len(mention_text) > _MENTION_LIMIT:
+                kept_mentions: list = []
+                for m in unique_mentions:
+                    candidate = prefix + "  ".join(kept_mentions + [m])
+                    if len(candidate) > _MENTION_LIMIT - 15:  # '외 NNN명' 공간 확보
+                        break
+                    kept_mentions.append(m)
+                omitted_count = len(unique_mentions) - len(kept_mentions)
+                mention_text = prefix + "  ".join(kept_mentions) + f"  외 {omitted_count}명"
+                logger.warning(
+                    f"담당자 멘션 텍스트 한도 초과 → {omitted_count}명 절단 "
+                    f"(원본 {len(unique_mentions)}명, 유지 {len(kept_mentions)}명)"
+                )
             blocks.append({
                 "type": "context",
-                "elements": [{
-                    "type": "mrkdwn",
-                    "text": "📌 담당자  " + "  ".join(unique_mentions),
-                }],
+                "elements": [{"type": "mrkdwn", "text": mention_text}],
             })
 
         blocks.append({"type": "divider"})
@@ -354,6 +392,51 @@ class SlackSender:
                 "elements": [{"type": "mrkdwn", "text": context_text}],
             },
         ])
+
+        # ── 블록 48개 한도 방어 (Slack 상한 50개, 안전 여유 2개) ────────────
+        # 초과 시: 후미 고정 블록(divider+context) 보존 후 중간 항목을 단일 section 텍스트로 병합.
+        _BLOCK_LIMIT = 48
+        if len(blocks) > _BLOCK_LIMIT:
+            # 후미 2개(divider, context)는 항상 보존
+            tail = blocks[-2:]
+            # 앞 고정 헤더 블록: header(0), divider(1), status(2) = 인덱스 0~2 보존
+            # 담당자 context 가 있으면 3번 인덱스까지 보존 (type=context)
+            head_end = 3
+            if len(blocks) > 3 and blocks[3].get("type") == "context":
+                head_end = 4
+            # head 뒤에 divider 1개
+            if len(blocks) > head_end and blocks[head_end].get("type") == "divider":
+                head_end += 1
+            head = blocks[:head_end]
+
+            # 나머지 중간 블록들 (tail 제외)
+            middle = blocks[head_end:-2]
+
+            # 중간 블록에서 텍스트 추출하여 단일 section 으로 병합
+            overflow_lines: list = []
+            for b in middle:
+                txt = b.get("text", {}).get("text", "") if b.get("type") == "section" else ""
+                if txt and not txt.startswith("*") or (txt.startswith("*") and len(txt) < 100):
+                    # 그룹명·상태 등 짧은 제목 포함
+                    overflow_lines.append(txt)
+                elif b.get("type") == "actions":
+                    # 체크박스 actions → 옵션 텍스트 나열
+                    for elem in b.get("elements", []):
+                        for opt in elem.get("options", []):
+                            overflow_lines.append("• " + opt.get("text", {}).get("text", ""))
+
+            overflow_text = self._truncate_lines(overflow_lines, self._SECTION_TEXT_LIMIT) if overflow_lines else "항목 목록 (한도 초과로 요약)"
+            overflow_block = {
+                "type":     "section",
+                "block_id": "overflow_items",
+                "text":     {"type": "mrkdwn", "text": overflow_text},
+            }
+
+            logger.warning(
+                f"블록 한도 초과: {len(blocks)}개 → {_BLOCK_LIMIT}개 이하로 병합 "
+                f"(중간 {len(middle)}개 블록을 1개 section 으로 축약)"
+            )
+            blocks = head + [overflow_block] + tail
 
         return blocks
 

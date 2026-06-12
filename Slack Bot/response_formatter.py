@@ -89,6 +89,10 @@ def format_ai_response(
     display_question: str = "",  # 표시용 전체 커맨드 (없으면 question 사용)
 ) -> str:
     """3단 구조 통합 포맷 mrkdwn 문자열을 반환."""
+    # 빈 답변 방어 — 빈 '💬 답변' 섹션 노출 방지 (predeploy U-7)
+    if not (raw_answer or "").strip():
+        raw_answer = "분석 결과를 가져오지 못했습니다. 잠시 후 다시 시도해주세요."
+
     answer, evidence = parse_answer_sections(raw_answer)
 
     # ── Slack 포맷 정규화 ─────────────────────────────────────────
@@ -137,4 +141,17 @@ def format_ai_response(
     else:
         parts.append(f"🔗 *출처*: {type_label} · {source_label}")
 
-    return "\n\n".join(parts)
+    formatted = "\n\n".join(parts)
+
+    # ── 길이 cap (predeploy P1-6) ──────────────────────────────────
+    # Slack slash command 응답 텍스트는 ~4000자 초과 시 모바일 잘림/렌더링 불완전.
+    # 출처 라인은 보존하고 답변/근거 본문만 절단.
+    _SLACK_TEXT_CAP = 3800
+    if len(formatted) > _SLACK_TEXT_CAP:
+        tail = parts[-1]  # 출처 라인
+        budget = _SLACK_TEXT_CAP - len(tail) - 60
+        head = "\n\n".join(parts[:-1])
+        formatted = (head[:budget].rstrip()
+                     + "\n\n_…(길이 제한으로 일부 생략)_\n\n" + tail)
+
+    return formatted

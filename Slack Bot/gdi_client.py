@@ -2,7 +2,7 @@
 gdi_client.py - GDI(Game Doc Insight) MCP 클라이언트
 
 MCP 프록시(mcp-dev.sginfra.net)를 통해 GDI 문서 저장소에 접근합니다.
-wiki_client.py 와 동일한 패턴으로, mcp_session.McpSession 을 공유합니다.
+wiki_client.py 와 동일한 패턴으로, mcp_core.McpSession 을 공유합니다.
 
 캐시 계층 (Phase 2):
   L1: 인메모리 dict (_GDI_MEM_CACHE) — 5분 TTL
@@ -31,7 +31,7 @@ import re
 import sqlite3
 import time
 
-from mcp_session import McpSession
+from mcp_core import McpSession
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ GDI_MODE = os.getenv("GDI_MODE", "local")
 
 try:
     import sys as _sys
-    _cache_path = "D:/Vibe Dev/QA Ops/mcp-cache-layer"
+    _cache_path = os.environ.get("MCP_CACHE_PATH", "D:/Vibe Dev/QA Ops/mcp-cache-layer")
     if _cache_path not in _sys.path:
         _sys.path.insert(0, _cache_path)
     # scripts/ 경로도 추가 (folder_taxonomy 임포트용)

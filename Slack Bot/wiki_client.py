@@ -23,25 +23,55 @@ import json
 import html as _html
 import logging
 import time
-import requests
 
-from mcp_session import McpSession
+from mcp_core import McpSession
 from game_aliases import detect_game_in_text
 from search.cql_parallel import run_parallel_cql
 
 # ── MCP 캐시 레이어 (optional — import 실패 시 캐시 없이 동작) ──────────────
+_WIKI_MEM_TTL = 300  # 기본값 (config 로드 실패 시)
+
 try:
     import sys as _sys
-    _sys.path.insert(0, "D:/Vibe Dev/QA Ops/mcp-cache-layer")
+    _cache_path = os.environ.get("MCP_CACHE_PATH", "D:/Vibe Dev/QA Ops/mcp-cache-layer")
+    if _cache_path not in _sys.path:
+        _sys.path.insert(0, _cache_path)
     from src.cache_manager import CacheManager as _CacheManager
     from src.cache_logger import ops_log as _ops_log, perf as _perf
+    from src import config as _cache_config
     _wiki_cache = _CacheManager()
+    _WIKI_MEM_TTL = getattr(_cache_config, "WIKI_MEM_TTL_SEC", 300)
     _CACHE_ENABLED = True
 except Exception:
     _wiki_cache = None
     _ops_log = None
     _perf = None
     _CACHE_ENABLED = False
+
+# ── L1 인메모리 캐시 (gdi_client._mem_get/_mem_set/_mem_get_with_ttl 동일 패턴) ─
+_WIKI_MEM_CACHE: dict = {}  # {key: (data, timestamp)}
+
+
+def _mem_get(key: str):
+    """L1 메모리 캐시 조회. TTL 초과 시 None."""
+    entry = _WIKI_MEM_CACHE.get(key)
+    if entry and (time.time() - entry[1]) < _WIKI_MEM_TTL:
+        return entry[0]
+    return None
+
+
+def _mem_get_with_ttl(key: str, ttl_sec: int = None):
+    """L1 메모리 캐시 조회. ttl_sec 미지정 시 기본 _WIKI_MEM_TTL 사용."""
+    effective_ttl = ttl_sec if ttl_sec is not None else _WIKI_MEM_TTL
+    entry = _WIKI_MEM_CACHE.get(key)
+    if entry and (time.time() - entry[1]) < effective_ttl:
+        return entry[0]
+    return None
+
+
+def _mem_set(key: str, data):
+    """L1 메모리 캐시 저장."""
+    _WIKI_MEM_CACHE[key] = (data, time.time())
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +147,19 @@ _DEFAULT_WIKI_URL  = "https://wiki.smilegate.net"
 # ── 페이지 콘텐츠 TTL 캐시 ────────────────────────────────────────────────
 _PAGE_CACHE: dict = {}   # {page_id: (plain_text, timestamp)}
 _PAGE_CACHE_TTL   = 300  # 5분 (초)
+
+
+def _cql_escape(value: str) -> str:
+    """CQL 문자열 리터럴 escape (CWE-943 인젝션 방어).
+
+    사용자 입력이 f'title = "{value}"' 형태로 CQL에 삽입될 때
+    따옴표로 리터럴을 탈출해 쿼리 구조를 변조하는 것을 차단.
+    백슬래시를 먼저 escape (escape 우회 방지) 후 따옴표 escape.
+    정상 입력(따옴표 없는 제목/검색어)은 결과 불변.
+    """
+    if not value:
+        return value
+    return value.replace('\\', '\\\\').replace('"', '\\"')
 
 # ── HTML 처리 헬퍼 ─────────────────────────────────────────────────────────
 
@@ -409,7 +452,7 @@ class ConfluenceWikiClient:
         if kw_rule:
             rule_page = kw_rule["page_title"]
             rule_cql = (
-                f'title = "{rule_page}" AND space = "{sk}" AND type=page'
+                f'title = "{_cql_escape(rule_page)}" AND space = "{_cql_escape(sk)}" AND type=page'
             )
             page = self._try_smart_cql(
                 rule_cql, year or "", title, fetch_full
@@ -648,7 +691,15 @@ class ConfluenceWikiClient:
         sk  = space_key or self._space_key
 
         # ── 0단계: 로컬 캐시 우선 조회 ────────────────────────────────
-        # MCP 호출 전에 SQLite 캐시에서 제목으로 먼저 조회 (밑줄→공백 포함)
+        # L1(인메모리) → L2(SQLite) 순서로 조회. MCP 호출 전 캐시 우선.
+        _l1_key = f"title:{sk}:{title.strip().lower()}"
+        _l1_hit = _mem_get(_l1_key)
+        if _l1_hit is not None:
+            logger.info(
+                f"[wiki][L1캐시적중] 제목 인메모리 캐시: '{_l1_hit.get('title')}'"
+            )
+            return _l1_hit, None
+
         if _CACHE_ENABLED:
             cache_variants = [title.strip(), title.replace("_", " ").strip()]
             seen = set()
@@ -683,12 +734,15 @@ class ConfluenceWikiClient:
                                     page_title, source="sqlite_title",
                                     node_id=node["id"],
                                 )
-                            return {
+                            _page_dict = {
                                 "id": page_id, "title": page_title,
                                 "url": page_url,
                                 "text": content["body_text"],
                                 "summary": summary, "keywords": kw_list,
-                            }, None
+                            }
+                            # L1 캐시에도 저장 (다음 동일 제목 요청은 SQLite 우회)
+                            _mem_set(_l1_key, _page_dict)
+                            return _page_dict, None
                 except Exception as e:
                     logger.debug(f"[wiki] 로컬 캐시 제목 조회 실패 (무시): {e}")
 
@@ -700,7 +754,7 @@ class ConfluenceWikiClient:
             title_variants.append(title_spaced)
 
         for t_variant in title_variants:
-            cql_exact = (f'title = "{t_variant}" AND space = "{sk}"'
+            cql_exact = (f'title = "{_cql_escape(t_variant)}" AND space = "{_cql_escape(sk)}"'
                          f' AND type=page')
             logger.info(f"[wiki] 제목 정확 검색 CQL (MCP): {cql_exact}")
             raw, err = self._mcp.call_tool(
@@ -720,7 +774,7 @@ class ConfluenceWikiClient:
                     ), None
 
         # ── 2단계: 부분 일치 (관련도 정렬) ─────────────────────────────
-        cql_fuzzy = (f'title ~ "{title}" AND space = "{sk}"'
+        cql_fuzzy = (f'title ~ "{_cql_escape(title)}" AND space = "{_cql_escape(sk)}"'
                      f' AND type=page ORDER BY lastmodified DESC')
         logger.info(f"[wiki] 제목 부분 검색 CQL: {cql_fuzzy} (fetch_full={fetch_full})")
         raw, err = self._mcp.call_tool(
@@ -787,7 +841,7 @@ class ConfluenceWikiClient:
         )
 
         # ── 1차: (안전한) ancestor 조건 포함 CQL ─────────────────────────────
-        cql = f'title ~ "{leaf_title}" AND space = "{sk}" AND type=page'
+        cql = f'title ~ "{_cql_escape(leaf_title)}" AND space = "{_cql_escape(sk)}" AND type=page'
         if ancestor_conditions:
             cql += f" AND {ancestor_conditions}"
         cql += " ORDER BY lastmodified DESC"
@@ -800,7 +854,7 @@ class ConfluenceWikiClient:
         # ── 2차: CQL 파싱 오류 시 ancestor 없이 재시도 ───────────────────────
         if err and "cannot be parsed" in err.lower():
             logger.warning(f"[wiki][1차] CQL 파싱 오류 → 2차 폴백 (ancestor 제거)")
-            cql2 = (f'title ~ "{leaf_title}" AND space = "{sk}"'
+            cql2 = (f'title ~ "{_cql_escape(leaf_title)}" AND space = "{_cql_escape(sk)}"'
                     f' AND type=page ORDER BY lastmodified DESC')
             logger.info(f"[wiki][2차] CQL: {cql2}")
             raw, err = self._mcp.call_tool(
@@ -817,7 +871,7 @@ class ConfluenceWikiClient:
         # ── 3차: 결과 없을 때 → ancestor 없이 재시도 (1차가 ancestor로 실패한 경우) ──
         if not results and ancestor_conditions:
             logger.warning(f"[wiki][2차] 결과 없음 → 3차 폴백 (ancestor 완전 제거)")
-            cql3 = (f'title ~ "{leaf_title}" AND space = "{sk}"'
+            cql3 = (f'title ~ "{_cql_escape(leaf_title)}" AND space = "{_cql_escape(sk)}"'
                     f' AND type=page ORDER BY lastmodified DESC')
             logger.info(f"[wiki][3차] CQL: {cql3}")
             raw2, err2 = self._mcp.call_tool(
@@ -867,7 +921,7 @@ class ConfluenceWikiClient:
           page_dict = {"id", "title", "url", "text"}
         """
         sk  = space_key or self._space_key
-        cql = (f'ancestor = "{page_title}" AND space = "{sk}"'
+        cql = (f'ancestor = "{_cql_escape(page_title)}" AND space = "{_cql_escape(sk)}"'
                f' AND type=page ORDER BY created DESC')
         logger.info(f"[wiki][최신하위] CQL: {cql}")
 
@@ -989,7 +1043,7 @@ class ConfluenceWikiClient:
         Returns: (list[page_dict], error_str | None)
         """
         sk = space_key or self._space_key
-        cql = (f'space="{sk}" AND text ~ "{query}"'
+        cql = (f'space="{_cql_escape(sk)}" AND text ~ "{_cql_escape(query)}"'
                f' AND type=page ORDER BY lastmodified DESC')
         logger.info(f"[wiki][MCP본문검색] CQL: {cql}")
 
@@ -1026,7 +1080,7 @@ class ConfluenceWikiClient:
         (list[{"id", "title"}] | None, error_str | None)
         """
         sk  = space_key or self._space_key
-        cql = (f'space="{sk}" AND text ~ "{query}"'
+        cql = (f'space="{_cql_escape(sk)}" AND text ~ "{_cql_escape(query)}"'
                f' AND type=page ORDER BY lastmodified DESC')
         raw, err = self._mcp.call_tool("cql_search", {"cql": cql, "limit": 10})
         if err:
