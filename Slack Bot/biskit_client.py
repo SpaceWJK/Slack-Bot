@@ -15,7 +15,7 @@ McpSession 패턴 (jira_client.py 기반)
 
 import os
 import logging
-from mcp_session import McpSession
+from mcp_core import McpSession
 
 logger = logging.getLogger(__name__)
 

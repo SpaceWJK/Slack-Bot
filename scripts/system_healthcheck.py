@@ -148,9 +148,9 @@ def check_mcp_connections(skip: bool = False):
         return
 
     try:
-        from mcp_session import McpSession
+        from mcp_core import McpSession
     except ImportError:
-        _add("MCP", "mcp_session 임포트", "FAIL", "mcp_session.py 누락")
+        _add("MCP", "mcp_session 임포트", "FAIL", "mcp-core 패키지 미설치")
         return
 
     from dotenv import load_dotenv
