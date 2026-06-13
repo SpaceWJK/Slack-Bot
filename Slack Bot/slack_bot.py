@@ -1415,10 +1415,19 @@ def _biskit_plan_call(question: str, projects: list) -> dict:
         f"- id={p.get('id','?')}: {p.get('aiDescription', p.get('name',''))}"
         for p in projects[:15]
     ])
+    # 그리드 Phase2: 카탈로그(메뉴/데이터셋 지형도) 주입 — plan 정확도 향상
+    _catalog_ctx = ""
+    try:
+        from agentic_engine import _load_catalog_summary
+        _catalog_ctx = _load_catalog_summary() or ""
+    except Exception:
+        pass
+
     prompt = (
         f"다음 BISKIT 프로젝트 목록에서 사용자 질의에 맞는 project_id와 "
         f"데이터셋 검색 키워드, 날짜 범위를 추출하세요.\n\n"
-        f"프로젝트 목록:\n{projects_text}\n\n"
+        f"프로젝트 목록:\n{projects_text}\n"
+        f"{_catalog_ctx}\n\n"
         f"사용자 질의: {question}\n\n"
         f"JSON으로만 응답 (다른 텍스트 없음):\n"
         f'{{"project_id":"...","search_keyword":"...","date_from":"YYYY-MM-DD or null","date_to":"YYYY-MM-DD or null"}}'
@@ -1720,17 +1729,10 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
             if _np_write_kw:
                 respond(text=format_block_message(_np_write_kw))
                 return
-            if ip.run_wiki_intent_pipeline(
-                text=text, page_part=_np_page_part, question=_np_question,
-                respond=respond, cache_mgr=wc._wiki_cache,
-                ask_claude_fn=_wiki_ask_claude,
-            ):
-                wc.log_wiki_query(
-                    user_id=user_id, user_name=user_name,
-                    action="ask_claude_intent", query=text,
-                    result="intent_pipeline",
-                )
-                return
+            # Phase 3 (task-193): 고정 파이프라인 → agentic 전환
+            # 기존 run_wiki_intent_pipeline 함수 삭제 금지 (결정적 경로 재사용 대비)
+            _run_source_agentic("wiki", text, respond)
+            return
 
         # 4단계 False 반환 시 기존 fallback (page_part \\ question 분기)
         if "\\" in text:
@@ -2275,19 +2277,9 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
             question     = pipe_parts[1]
 
             if search_query and question:
-                # ── task-129.5: 4단계 파이프라인 진입 시도 ──
-                # M-2 시정: _has_breadcrumb 분기는 위 L2209에서 처리 (여기는 not breadcrumb 보장)
-                if ip.run_gdi_intent_pipeline(
-                    text=text, folder=search_query, question=question,
-                    respond=respond, cache_mgr=gc._gdi_cache,
-                    ask_claude_fn=_gdi_ask_claude,
-                ):
-                    gc.log_gdi_query(
-                        user_id=user_id, user_name=user_name,
-                        action="ask_claude_intent", query=text,
-                        result="intent_pipeline",
-                    )
-                    return
+                # Phase 3 (task-193): agentic 전환 — 기존 파이프라인 함수 미삭제
+                _run_source_agentic("gdi", text, respond)
+                return
 
                 t0 = time.time()
 
@@ -2389,15 +2381,8 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
                 )
                 return
 
-        # 나머지: 통합 검색
-        t0 = time.time()
-        _gdi_search(gdi_client, text, respond)
-        gc.log_gdi_query(
-            user_id=user_id, user_name=user_name,
-            action="search", query=text,
-            result="검색 완료",
-            elapsed_ms=int((time.time() - t0) * 1000),
-        )
+        # 나머지(순수 자연어 — 구분자 없음): Phase 3 agentic 전환
+        _run_source_agentic("gdi", text, respond)
 
     # ── /jira 커맨드 ─────────────────────────────────────────────
 
@@ -2483,6 +2468,17 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
             _jira_project(jira_cli, key, user_id, user_name, respond)
             return
 
+        # ── 이슈 키 단독 입력 → 이슈 조회 (결정적 경로 — Phase 3 불변) ──
+        if jc.looks_like_issue_key(text):
+            _jira_issue(jira_cli, text.upper(), user_id, user_name, respond)
+            return
+
+        # ── 자연어 질의 (Phase 3 agentic 전환, task-193) ──
+        # 아래 기존 파이프/JQL 코드는 미삭제 (결정적 경로 재사용 대비) — 미호출
+        _run_source_agentic("jira", text, respond)
+        return
+
+        # ── Phase 3 이전 파이프라인 (미호출 — 아래 코드 데드코드) ──
         # ── 파이프(\) 구분: [프로젝트명/이슈키/검색어] \ [질문] ──
         if "\\" in text:
             pipe_parts = [p.strip() for p in text.split("\\")]
@@ -2711,19 +2707,58 @@ def create_bolt_app(bot_token: str, slack_sender: SlackSender) -> App:
             _biskit_help(respond)
             return
 
-        import threading
-        threading.Thread(
-            target=_biskit_query,
-            args=(text, command.get("user_id", ""), respond),
-            daemon=True,
-        ).start()
+        # Phase 3 (task-193): 고정 파이프라인 → agentic 전환
+        # 기존 _biskit_query 함수는 미삭제 (회귀 대비)
+        _run_source_agentic("biskit", text, respond)
 
-    # ── /ask (task-192 파일럿 — agentic 통합검색) ──────────────
-    # 기존 4커맨드(/wiki /gdi /jira /biskit) 핸들러 무변경. 격리 파일럿.
+    # ── Phase 3: 4커맨드 자연어 질의 agentic 공통 헬퍼 (task-193) ──────────
+    # ExpiringResponder는 각 핸들러 상단에서 이미 래핑됨 → 여기서 재래핑 금지.
+    # semaphore는 _ask_semaphore(3) 공유 — /ask와 동일 제한.
 
     import agentic_engine as _ae
 
     _ask_semaphore = _ae._ask_semaphore
+
+    def _run_source_agentic(source: str, question: str, respond) -> None:
+        """4커맨드 자연어 질의 → run_agentic(whitelist) 공통 헬퍼.
+
+        호출자(핸들러)에서 이미 ExpiringResponder 래핑 + _sanitize_user_input 적용됨.
+        semaphore: _ask_semaphore(3) 공유. /ask와 동일 concurrency 제한.
+        """
+        if not _ask_semaphore.acquire(blocking=False):
+            respond(text="현재 처리 중인 요청이 많습니다. 잠시 후 다시 시도해주세요.")
+            return
+
+        def _heartbeat(msg: str):
+            try:
+                respond(text=msg)
+            except Exception:
+                pass
+
+        def _run():
+            try:
+                answer = _ae.run_agentic(
+                    question=question,
+                    whitelist=_ae.SOURCE_TOOLS[source],
+                    system_hint=_ae.SOURCE_HINTS[source],
+                    respond=respond,
+                    heartbeat=_heartbeat,
+                )
+                formatted = format_ai_response(
+                    question=question,
+                    raw_answer=answer,
+                    source_type=source,
+                    source_label="(스마트 검색)",
+                    source_url="",
+                )
+                respond(text=formatted)
+            except Exception as e:
+                logger.error(f"[{source}/agentic] 처리 실패: {e}", exc_info=True)
+                respond(text="❌ 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
+            finally:
+                _ask_semaphore.release()
+
+        threading.Thread(target=_run, daemon=True).start()
 
     @app.command("/ask")
     def handle_ask_command(ack, respond, command, client):

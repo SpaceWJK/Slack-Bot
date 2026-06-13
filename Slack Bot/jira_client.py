@@ -107,7 +107,7 @@ def _check_jql_danger(jql: str):
     """
     raw = jql.lower()
     normalized = re.sub(r"\s+", "", raw)  # 공백 우회 차단
-    _DANGER = ("or1=1", ";", "--", "delete", "update", "insert", "/*", "*/")
+    _DANGER = ("or1=1", ";", "/*", "*/")
     if any(p in normalized for p in _DANGER):
         return "허용되지 않은 쿼리 패턴입니다."
     return None

@@ -17,10 +17,211 @@ slack_bot.py에서 분리하여 testability 확보 (slack_bolt 의존성 우회)
 """
 
 import logging
+import re
+import sqlite3
 import time
 from typing import Optional, Callable, Any
 
 logger = logging.getLogger(__name__)
+
+# ── 카테고리 감지 패턴 ────────────────────────────────────────────────────────
+_CATEGORY_PATTERNS: list[tuple[str, re.Pattern]] = [
+    ("hotfix", re.compile(r"핫픽스|hotfix|hot\s*fix|긴급패치", re.IGNORECASE)),
+    ("release", re.compile(r"릴리즈|release|배포일정", re.IGNORECASE)),
+    ("qa",      re.compile(r"체크리스트|점검항목", re.IGNORECASE)),
+]
+
+
+def _detect_wiki_category(text: str) -> "str | None":
+    """질문 텍스트에서 wiki 그리드 카테고리를 감지합니다.
+
+    Returns: 'hotfix' | 'release' | 'qa' | None
+    """
+    for category, pattern in _CATEGORY_PATTERNS:
+        if pattern.search(text):
+            return category
+    return None
+
+
+def grid_first_search_wiki(question: str, cache_mgr) -> "list | None":
+    """wiki 그리드 1순위 검색 (task-193 Phase 2 §A).
+
+    카테고리(hotfix/release/qa) 감지 후 nodes WHERE source_type='wiki' AND category=?
+    [AND (game_tag=? OR game_tag IS NULL)] ORDER BY last_modified DESC LIMIT 5.
+
+    Returns:
+        None       — 카테고리 미감지 (기존 경로 fallback)
+        []         — 카테고리 감지, 결과 0건 (기존 경로 fallback)
+        [SearchHit, ...] — hits 있으면 이걸 컨텍스트로 사용
+    """
+    category = _detect_wiki_category(question)
+    if category is None:
+        return None  # 감지 안 됨 → 기존 경로
+
+    # 게임 감지 (game_aliases는 순환 임포트 없이 lazy import)
+    game_tag: "str | None" = None
+    try:
+        import game_aliases
+        game_info = game_aliases.detect_game_in_text(question)
+        if game_info:
+            game_tag = game_info.get("canonical")
+    except ImportError:
+        pass
+
+    db_path = cache_mgr.get_db_path()
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        try:
+            if game_tag:
+                sql = (
+                    "SELECT n.id, n.title, n.url, dc.body_text, dc.summary, dm.last_modified "
+                    "FROM nodes n "
+                    "LEFT JOIN doc_content dc ON dc.node_id = n.id "
+                    "LEFT JOIN doc_meta dm ON dm.node_id = n.id "
+                    "WHERE n.source_type = 'wiki' AND n.category = ? "
+                    "  AND (n.game_tag = ? OR n.game_tag IS NULL) "
+                    "ORDER BY dm.last_modified DESC LIMIT 5"
+                )
+                rows = conn.execute(sql, (category, game_tag)).fetchall()
+            else:
+                sql = (
+                    "SELECT n.id, n.title, n.url, dc.body_text, dc.summary, dm.last_modified "
+                    "FROM nodes n "
+                    "LEFT JOIN doc_content dc ON dc.node_id = n.id "
+                    "LEFT JOIN doc_meta dm ON dm.node_id = n.id "
+                    "WHERE n.source_type = 'wiki' AND n.category = ? "
+                    "ORDER BY dm.last_modified DESC LIMIT 5"
+                )
+                rows = conn.execute(sql, (category,)).fetchall()
+        finally:
+            conn.close()
+    except sqlite3.Error as e:
+        logger.warning(f"[wiki/grid] DB 오류, fallback: {e}")
+        return None
+
+    # sqlite3.Row → SearchHit 호환 객체 변환
+    # relaxation_engine 의존 없이 동일 구조의 간단한 dataclass 사용
+    from dataclasses import dataclass, field as dc_field
+
+    @dataclass
+    class _GridHit:
+        node_id: int
+        chunk_id: "int | None"
+        title: str
+        snippet: str
+        score: float
+        metadata: dict = dc_field(default_factory=dict)
+
+    hits = []
+    for row in rows:
+        r = dict(row)
+        hits.append(_GridHit(
+            node_id=r.get("id", 0),
+            chunk_id=None,
+            title=r.get("title", ""),
+            snippet=(r.get("summary") or r.get("body_text") or "")[:500],
+            score=0.0,
+            metadata={"last_modified": r.get("last_modified") or ""},
+        ))
+
+    logger.info(
+        f"[wiki/grid] category={category!r}, game_tag={game_tag!r}, hits={len(hits)}"
+    )
+    return hits
+
+
+# ── gdi 그리드 1순위 검색 (task-193 Phase 2 §B) ──────────────────────────────
+
+_GDI_KIND_PATTERNS = [
+    ("issue_unit_planning", re.compile(r"기획서|사양서|스펙", re.IGNORECASE)),
+    ("bat_result",          re.compile(r"\bBAT\b|뱃 ?결과", re.IGNORECASE)),
+    ("patch_note",          re.compile(r"패치 ?노트|patch ?note", re.IGNORECASE)),
+    ("qa_check_list",       re.compile(r"체크 ?리스트|점검 ?항목|checklist", re.IGNORECASE)),
+]
+
+_GDI_DATE_RE = re.compile(r"\b(20\d{6}|\d{4})\b")  # 20260527 또는 0527
+
+
+def grid_first_search_gdi(question: str, cache_mgr) -> "list | None":
+    """gdi 그리드 1순위 검색 — search_by_build_meta 재사용 (task-193 Phase 2 §B).
+
+    게임 + file_kind 의도 감지 시 빌드 메타 축으로 캐시 직접 조회.
+    Returns: None(미감지→기존 경로) | [](0건→기존 경로) | [_GridHit,...]
+    """
+    # file_kind 의도 감지
+    file_kind = None
+    for kind, pattern in _GDI_KIND_PATTERNS:
+        if pattern.search(question):
+            file_kind = kind
+            break
+    if file_kind is None:
+        return None  # 의도 미감지 → 기존 경로
+
+    # 게임 감지 (search_by_build_meta는 game_tag 필수)
+    game_tag = None
+    try:
+        import game_aliases
+        game_info = game_aliases.detect_game_in_text(question)
+        if game_info:
+            game_tag = game_info.get("canonical")
+    except ImportError:
+        pass
+    if not game_tag:
+        return None  # 게임 미특정 → 기존 경로
+
+    # 날짜 감지: 8자리 그대로, 4자리(MMDD)는 올해 연도 보정
+    build_date = None
+    m = _GDI_DATE_RE.search(question)
+    if m:
+        raw = m.group(1)
+        if len(raw) == 8:
+            build_date = raw
+        elif len(raw) == 4 and raw[:2] in {"01","02","03","04","05","06","07","08","09","10","11","12"}:
+            import datetime as _dt
+            build_date = f"{_dt.date.today().year}{raw}"
+
+    try:
+        import gdi_client as gc
+        rows = gc.search_by_build_meta(
+            game_tag=game_tag, build_date=build_date,
+            file_kind=file_kind, limit=10,
+        )
+    except Exception as e:
+        logger.warning(f"[gdi/grid] search_by_build_meta 오류, fallback: {e}")
+        return None
+
+    from dataclasses import dataclass, field as dc_field
+
+    @dataclass
+    class _GridHit:
+        node_id: int
+        chunk_id: "int | None"
+        title: str
+        snippet: str
+        score: float
+        metadata: dict = dc_field(default_factory=dict)
+
+    hits = []
+    for r in rows or []:
+        hits.append(_GridHit(
+            node_id=r.get("id", 0),
+            chunk_id=None,
+            title=r.get("title", ""),
+            snippet="",
+            score=0.0,
+            metadata={
+                "path": r.get("path") or "",
+                "ref_date": r.get("ref_date") or r.get("build_date") or "",
+                "file_kind": r.get("file_kind") or "",
+            },
+        ))
+
+    logger.info(
+        f"[gdi/grid] game={game_tag!r}, kind={file_kind!r}, "
+        f"date={build_date!r}, hits={len(hits)}"
+    )
+    return hits
 
 
 # ── helper context 함수 ───────────────────────────────────────────────────────
@@ -156,6 +357,32 @@ def run_wiki_intent_pipeline(
     if cache_mgr is None:
         return False
 
+    # ── [신규 task-193] 그리드 1순위 검색 ──
+    # 카테고리 감지(hotfix/release/qa) + 게임 감지 → category/game_tag 필터 즉답.
+    # None=미감지, []=0건 → 기존 4단계 파이프라인 fallthrough.
+    grid_hits = grid_first_search_wiki(text, cache_mgr)
+    if grid_hits:
+        # 그리드 hits 있음 → ask_claude_fn 컨텍스트로 전달 후 즉답
+        context = hits_to_wiki_context(grid_hits)
+        if ask_claude_fn is not None:
+            try:
+                ask_claude_fn(
+                    page_title=page_part or "(그리드 검색)",
+                    page_text=context,
+                    page_url="",
+                    question=question,
+                    respond=respond,
+                    display_question=f"/wiki {text}",
+                )
+            except Exception as e:
+                logger.warning(f"[wiki/grid] ask_claude_fn 예외, fallthrough: {e}")
+                return False
+        else:
+            respond(text=context or "그리드 검색 결과를 찾았으나 내용을 표시할 수 없습니다.")
+        logger.info(f"[wiki/grid] 그리드 즉답 hits={len(grid_hits)}")
+        return True
+    # grid_hits is None(미감지) 또는 [](0건) → 기존 경로로 fallthrough
+
     # ── extract_intent (MAJOR-NEW-6: full_text) ──
     intent = None
     try:
@@ -271,6 +498,28 @@ def run_gdi_intent_pipeline(
 
     if cache_mgr is None:
         return False
+
+    # ── 그리드 1순위 검색 (task-193 Phase 2 §B) — 0건/미감지 시 기존 경로 불변 ──
+    grid_hits = grid_first_search_gdi(text, cache_mgr)
+    if grid_hits:
+        context = hits_to_gdi_context(grid_hits)
+        if ask_claude_fn is not None:
+            try:
+                ask_claude_fn(
+                    context_text=context,
+                    source_label=folder or "(그리드 검색)",
+                    question=question or text,
+                    respond=respond,
+                    display_question=f"/gdi {text}",
+                )
+            except Exception as e:
+                logger.warning(f"[gdi/grid] ask_claude_fn 예외, fallthrough: {e}")
+                return False
+        else:
+            respond(text=context or "그리드 검색 결과를 표시할 수 없습니다.")
+        logger.info(f"[gdi/grid] 그리드 즉답 hits={len(grid_hits)}")
+        return True
+    # grid_hits None(미감지)/[](0건) → 기존 경로
 
     intent = None
     try:
