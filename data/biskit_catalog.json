@@ -1,15 +1,57 @@
 {
-  "built_at": "2026-06-05T16:23:23.999520",
+  "built_at": "2026-06-15T13:58:37.543217",
   "projects": [
     {
-      "id": 2,
-      "name": "에픽세븐",
+      "id": 1,
+      "name": "로드나인",
       "aliases": [
-        "에픽세븐 글로벌",
-        "에픽"
+        "로드나인 글로벌",
+        "lordnine global",
+        "로나",
+        "loadnine",
+        "load nine",
+        "L9",
+        "loadnine",
+        "로나 글로벌"
       ],
-      "aiDescription": "[게임] 모바일 턴제 수집형 RPG | 2018.08 출시 | iOS/Android | 개발: 슈퍼크리에이티브 / 유통: 메가포트 | 애니메이션 전투 특징",
+      "aiDescription": "[게임] 모바일 MMORPG | 2024.07 출시 | iOS/Android/PC",
       "menu_tree": [
+        {
+          "category": "운영지표",
+          "menus": [
+            {
+              "name": "실시간 지표"
+            },
+            {
+              "name": "메타데이터 조회"
+            },
+            {
+              "name": "모니터링"
+            },
+            {
+              "name": "컨텐츠 모니터링 지표"
+            }
+          ]
+        },
+        {
+          "category": "플랫폼",
+          "menus": [
+            {
+              "name": "실시간 지표"
+            },
+            {
+              "name": "사전 등록 "
+            }
+          ]
+        },
+        {
+          "category": "마케팅 지표",
+          "menus": [
+            {
+              "name": "컨텐츠 모니터링"
+            }
+          ]
+        },
         {
           "category": "커뮤니티 동향",
           "menus": [
@@ -26,6 +68,2263 @@
         }
       ],
       "datasets": [
+        {
+          "id": 2363,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 - 다운로드 || CATEGORY, 날짜 || AUTHORS, POSTS",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "reportLang",
+            "categoryCd",
+            "startDt",
+            "perdCd",
+            "endDt",
+            "lang",
+            "communityCd",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2362,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 - 차트용 || 진행 일자 || ARTICLE 수, AUTHOR 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "perdCd",
+            "endDt",
+            "lang",
+            "communityCd",
+            "categoryCd",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1821,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 비교 분석 - 기간/주제별 여론 변화 추적 || 진행 일자, 날짜 유형, 기간 LABEL || ARTICLE 수, AUTHOR 수, OFFSET",
+          "metricCategory": "기타",
+          "key_params": [
+            "tablePrefix",
+            "gameId",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "baseDt",
+            "compareDt",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 292,
+          "menuPath": "운영지표 > 모니터링 > 동접(5분) 서버별 비교",
+          "description": "선택 월드의 상세 서버별 5분 단위 동시접속자(CCU) 실시간 모니터링 지표. 서버 부하·트래픽 비교용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "SERVER_CD",
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 290,
+          "menuPath": "운영지표 > 모니터링 > 동접(5분) 서버별 비교",
+          "description": "선택 월드의 상세 서버별 5분 단위 동시접속자(CCU) 실시간 모니터링 지표. 서버 부하·트래픽 비교용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "SERVER_CD",
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 289,
+          "menuPath": "운영지표 > 모니터링 > 동접(5분) 월드별 비교",
+          "description": "월드별 5분 단위 동시접속자(CCU) 실시간 시계열. 가르바나·디엔 등 월드 트래픽 비교용 운영 모니터링 지표.",
+          "metricCategory": "기타",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 288,
+          "menuPath": "운영지표 > 모니터링 > 동접(5분) 월드별 비교",
+          "description": "월드별 5분 단위 동시접속자(CCU) 실시간 시계열. 라엘·로웨인 등 월드 단위 트래픽 비교용 운영 모니터링 지표.",
+          "metricCategory": "기타",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 287,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 서버별 비교",
+          "description": "선택 월드의 상세 서버별 5분 단위 동시접속자(CCU) 실시간 시계열. 운영 모니터링용 서버 부하·트래픽 비교 지표.",
+          "metricCategory": "기타",
+          "key_params": [
+            "SERVER_CD",
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 286,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 서버별 비교",
+          "description": "전체 월드·서버별 5분 단위 동시 접속자(CCU) 실시간 시계열. 월드와 세부 서버 단위 동접 분포를 함께 확인.",
+          "metricCategory": "기타",
+          "key_params": [
+            "SERVER_CD",
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 285,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 서버별 비교",
+          "description": "지정 월드 하위 서버별 5분 단위 동시 접속자(CCU) 실시간 시계열. 서버 부하/분포 비교용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "SERVER_CD",
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 282,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 월드별 비교",
+          "description": "5분 단위 월드별 동시 접속자(CCU) 실시간 시계열. 지정 일자(endDt)의 월드별 CCU 추이를 비교한다.",
+          "metricCategory": "기타",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 280,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 월드별 비교",
+          "description": "5분 단위 월드별 동시 접속자(CCU) 실시간 비교 시계열. 전일 동접 추이 모니터링용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 109,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 일자별 비교",
+          "description": "당일 플랫폼로그 기준 현재·평균·최대 동접자 수를 한 행으로 요약하는 실시간 KPI 스냅샷. 게임로그 CCU와 비교하여 플랫폼 측 접속 상태 확인.",
+          "metricCategory": "기타",
+          "key_params": [
+            "compareDt",
+            "countryCd",
+            "endDt",
+            "osCd",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2367,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 - 다운로드 || CATEGORY, 날짜, NEGATIVE RATIO, TOPIC, SUMMARY JSON || AUTHORS, POSTS",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "reportLang",
+            "startDt",
+            "endDt",
+            "communityCd",
+            "channelCd",
+            "lang"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2366,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 || ARTICLE 목록 정보, 진행 일자, SUMMARY ID, SUMMARY JSON, 제목 || ARTICLE 수, AUTHOR 수, NEGATIVE 비율, NEUTRAL 비율, POSITIVE 비율, 전체 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "endDt",
+            "communityCd",
+            "channelCd",
+            "lang",
+            "reportLang",
+            "pageNumber",
+            "pageSize"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1668,
+          "menuPath": "플랫폼 > 사전 등록 > 공홈 사전 등록자 수 (페이지언어_지역별)",
+          "description": "공홈 사전 등록자 수를 페이지 언어·국가·인증 유형별로 집계. 전일 23:59:59 기준, 매일 오전 9시 갱신.",
+          "metricCategory": "기타",
+          "key_params": [
+            "authTypeCd",
+            "countryCd",
+            "endDt",
+            "eventCd",
+            "langCd",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1666,
+          "menuPath": "플랫폼 > 사전 등록 > 공홈 사전 등록자 수 (페이지언어_지역별)",
+          "description": "공식 홈페이지 사전 등록 구분(인증 방식)별 등록자 수를 페이지언어·지역 기준으로 집계. 데이터는 전일 23:59:59 기준 매일 오전 9시 조회 가능.",
+          "metricCategory": "기타",
+          "key_params": [
+            "authTypeCd",
+            "countryCd",
+            "endDt",
+            "eventCd",
+            "langCd",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 388,
+          "menuPath": "플랫폼 > 사전 등록 > 사전 등록자 수 (IP 정보별)",
+          "description": "사전 등록자 수를 IP 주소별·등록 구분·횟수 구간으로 일자 시계열 집계. 전일 23:59:59 기준 매일 9시 갱신, 상위 15개 노출.",
+          "metricCategory": "기타",
+          "key_params": [
+            "authTypeCd",
+            "countryCd",
+            "endDt",
+            "eventCd",
+            "langCd",
+            "regCntSectionCd",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2360,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 || MOST ARTICLE CATEGORY, MOST KEYWORD || MOST ARTICLE CATEGORY 수, MOST KEYWORD ARTICLE 수, 전체 ARTICLE 수, 전체 ARTICLE 차이 수, 전체 ARTICLE 차이 율, 전체 원시 ARTICLE 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "reportLang",
+            "compareDt",
+            "baseDt",
+            "perdCd",
+            "lang",
+            "communityCd",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2365,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 - 다운로드 || 날짜, 부정게시글비율, 부정게시글수, 카테고리 || ",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "reportLang",
+            "startDt",
+            "endDt",
+            "perdCd",
+            "lang",
+            "communityCd",
+            "categoryCd",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2364,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 - 차트용 || 진행 일자 || NEGATIVE 수, NEGATIVE 비율, NEUTRAL 수, NEUTRAL 비율, POSITIVE 수, POSITIVE 비율",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "perdCd",
+            "endDt",
+            "lang",
+            "communityCd",
+            "categoryCd",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4407,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 ||  || 전체 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "endDt",
+            "lang",
+            "communityCd",
+            "channelCd",
+            "categoryCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2371,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 || ARTICLE ID, CATEGORY 코드, COMMUNITY 코드, 콘텐츠, KEYWORDS, 링크, 계정 생성일, SENTIMENT, 제목 || ",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "endDt",
+            "lang",
+            "communityCd",
+            "channelCd",
+            "categoryCd",
+            "sentiment",
+            "pageNumber",
+            "pageSize"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2370,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 - 다운로드 || 기준 ARTICLE 수, KEYWORD, 랭크, 랭크 변경 || ",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "baseDt",
+            "compareDt",
+            "perdCd",
+            "lang",
+            "communityCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2369,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 || KEYWORD || 기준 ARTICLE 수, 기준 주문, COMPARE ARTICLE 수, COMPARE 주문",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "baseDt",
+            "compareDt",
+            "perdCd",
+            "lang",
+            "communityCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2368,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 || ARTICLE ID, COMMUNITY 코드, 콘텐츠, KEYWORDS, 링크, 계정 생성일, SENTIMENT, 제목 || 전체 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "communityCd",
+            "channelCd",
+            "pageNumber",
+            "pageSize",
+            "articleIds"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2361,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 || 명, 값 || ARTICLE 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "reportLang",
+            "startDt",
+            "endDt",
+            "perdCd",
+            "lang",
+            "communityCd",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2359,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 - 다운로드 || 진행 일자, CMNTY 코드, 언어 코드, SUMMARY JSON || NEGATIVE ARTICLE 비율, 전체 ARTICLE 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "endDt",
+            "reportLang",
+            "perdCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2358,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 종합 - 감정/카테고리/키워드 종합 모니터링 || SUMMARY ID, SUMMARY JSON || NEGATIVE ARTICLE 비율, NEUTRAL ARTICLE 비율, POSITIVE ARTICLE 비율, 전체 ARTICLE 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "baseDt",
+            "communityCd",
+            "lang",
+            "reportLang",
+            "perdCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1829,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "동일 언어권·커뮤니티 내 분석 날짜와 비교 날짜의 게시글 수·작성자 수·감정 비율 변화를 일/주/월 단위로 비교하는 리포트.",
+          "metricCategory": "기타",
+          "key_params": [
+            "communityCd",
+            "lang",
+            "perdCd",
+            "reportLang",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1828,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 비교 분석 - 기간/주제별 여론 변화 추적 - 다운로드 || ARTICLE 차이 비율, 기준 ARTICLE 수, COMPARE ARTICLE 수, KEYWORD, 랭크, 랭크 변경 || ARTICLE 차이 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "tablePrefix",
+            "gameId",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "baseDt",
+            "compareDt"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1827,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 비교 분석 - 기간/주제별 여론 변화 추적 || KEYWORD || ARTICLE 차이 수, ARTICLE 차이 비율, 기준 ARTICLE 수, 기준 주문, COMPARE ARTICLE 수, COMPARE 주문",
+          "metricCategory": "기타",
+          "key_params": [
+            "tablePrefix",
+            "gameId",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "baseDt",
+            "compareDt"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1826,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 비교 분석 - 기간/주제별 여론 변화 추적 - 다운로드 || ARTICLE 차이 비율, 기준 ARTICLE 수, 기준 ARTICLE 비율, CATEGORY, COMPARE ARTICLE 수, COMPARE ARTICLE 비율 || ",
+          "metricCategory": "기타",
+          "key_params": [
+            "tablePrefix",
+            "gameId",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "compareDt",
+            "baseDt",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1825,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 비교 분석 - 기간/주제별 여론 변화 추적 || CATEGORY || ARTICLE 차이 비율, 기준 ARTICLE 수, 기준 ARTICLE 비율, COMPARE ARTICLE 수, COMPARE ARTICLE 비율",
+          "metricCategory": "기타",
+          "key_params": [
+            "tablePrefix",
+            "gameId",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "compareDt",
+            "baseDt",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1824,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 비교 분석 - 기간/주제별 여론 변화 추적 - 다운로드 || 기준 NEGATIVE, 기준 NEUTRAL, 기준 POSITIVE, COMPARE NEGATIVE, COMPARE NEUTRAL, COMPARE POSITIVE, 기간 LABEL || ",
+          "metricCategory": "기타",
+          "key_params": [
+            "tablePrefix",
+            "gameId",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "baseDt",
+            "compareDt",
+            "channelCd",
+            "mode"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1823,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 비교 분석 - 기간/주제별 여론 변화 추적 || 진행 일자, 날짜 유형, 기간 LABEL || NEGATIVE ARTICLE 수, NEGATIVE ARTICLE 율, NEUTRAL ARTICLE 수, NEUTRAL ARTICLE 율, OFFSET, POSITIVE ARTICLE 수, POSITIVE ARTICLE 율",
+          "metricCategory": "기타",
+          "key_params": [
+            "tablePrefix",
+            "gameId",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "baseDt",
+            "compareDt",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1822,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 비교 분석 - 기간/주제별 여론 변화 추적 - 다운로드 || 기간 LABEL || 기준 수, COMPARE 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "tablePrefix",
+            "gameId",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "baseDt",
+            "compareDt",
+            "channelCd",
+            "mode"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2373,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 요약 목록 > 커뮤니티 요약 목록",
+          "description": "커뮤니티 요약 목록 - LLM 요약 결과 일별 인덱스 - 다운로드 || 진행 일자, CMNTY 코드, 게임 ID, 언어 코드, SUMMARY JSON || ARTICLE 수, NEGATIVE 비율, NEUTRAL 비율, POSITIVE 비율",
+          "metricCategory": "기타",
+          "key_params": [
+            "tablePrefix",
+            "gameId",
+            "startDt",
+            "endDt",
+            "reportLang",
+            "perdCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2372,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 요약 목록 > 커뮤니티 요약 목록",
+          "description": "커뮤니티 요약 목록 - LLM 요약 결과 일별 인덱스 || 진행 일자, CMNTY 코드, 언어 코드, SUMMARY ID, SUMMARY JSON || ARTICLE 수, NEGATIVE 비율, 전체 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "tablePrefix",
+            "gameId",
+            "startDt",
+            "endDt",
+            "reportLang",
+            "perdCd",
+            "search",
+            "pageNumber",
+            "pageSize",
+            "langCds",
+            "communityCds"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2357,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 리포트의 데이터 수집 시작 일자 메타 정보를 제공하는 보조 데이터셋.",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 188,
+          "menuPath": "운영지표 > 메타데이터 조회 > 룬",
+          "description": "게임 내 룬 메타데이터 사전. 코드·명칭·티어·타입·등급·공명점수로 룬 아이템을 식별·분류한다.",
+          "metricCategory": "기타",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 125,
+          "menuPath": "운영지표 > 메타데이터 조회 > 아이템",
+          "description": "게임 내 아이템 메타데이터 조회. 아이템 코드·명칭·등급과 3단계 카테고리 구성을 확인하는 마스터 테이블.",
+          "metricCategory": "기타",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 108,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 일자별 비교",
+          "description": "5분 단위 플랫폼 로그 동접자 수를 당일과 비교일자 나란히 보여주는 실시간 시계열. 게임로그 CCU와 별개의 플랫폼 측 동접 흐름 비교용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "compareDt",
+            "countryCd",
+            "endDt",
+            "osCd",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 107,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 일자별 비교",
+          "description": "당일 게임로그 기준 현재·평균·최대 동접자(CCU)와 누적 매출을 한 행으로 보여주는 실시간 KPI 스냅샷.",
+          "metricCategory": "기타",
+          "key_params": [
+            "compareDt",
+            "countryCd",
+            "endDt",
+            "osCd",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 106,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 일자별 비교",
+          "description": "5분 단위로 게임로그 기준 동접(CCU)과 매출을 당일·비교일자 나란히 보여주는 실시간 시계열. 국가·OS 필터 지원.",
+          "metricCategory": "기타",
+          "key_params": [
+            "compareDt",
+            "countryCd",
+            "endDt",
+            "osCd",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 166,
+          "menuPath": "운영지표 > 모니터링 > 동접(5분) 일자별 비교",
+          "description": "운영 모니터링용 5분 단위 동접자 수 단일 지표 시계열로 당일과 비교일자를 겹쳐 본다. 값은 랜덤 보정(randVal) 적용 가능.",
+          "metricCategory": "기타",
+          "key_params": [
+            "compareDt",
+            "countryCd",
+            "endDt",
+            "osCd",
+            "randVal",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 164,
+          "menuPath": "운영지표 > 모니터링 > 동접(5분) 일자별 비교",
+          "description": "운영 모니터링용 5분 단위 동접·매출·결제유저 시계열로 당일과 비교일자를 겹쳐 본다. 값은 랜덤 보정(randVal) 적용 가능.",
+          "metricCategory": "기타",
+          "key_params": [
+            "compareDt",
+            "countryCd",
+            "endDt",
+            "osCd",
+            "randVal",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 387,
+          "menuPath": "플랫폼 > 실시간 지표 > 사전 등록자 수 (시간대별)",
+          "description": "일자·시간대별 사전 등록자 수 시계열(1시간 단위 집계). 이벤트·인증 구분별로 사전 등록 유입 추이를 모니터링하는 마케팅 지표.",
+          "metricCategory": "기타",
+          "key_params": [
+            "authTypeCd",
+            "endDt",
+            "eventCd",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 364,
+          "menuPath": "마케팅 지표 > 컨텐츠 모니터링 > 오르페서버 경쟁 구도 모니터링 지표",
+          "description": "특정일 오르페 서버 경쟁 구도 스냅샷. 국가·전투력 구간·상세 서버별 이용자 분포로 서버 간 경쟁 강도 비교에 활용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 338,
+          "menuPath": "운영지표 > 컨텐츠 모니터링 지표 > 던전이용량",
+          "description": "월드·서버·던전구분별 던전 이용자 수 모니터링. 컨텐츠 소비 추이와 던전별 인기도를 비교하는 운영 지표.",
+          "metricCategory": "기타",
+          "key_params": [
+            "endDt",
+            "p_DUNGEON_DIV_CD",
+            "p_WORLD_CD",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "로드나인 아시아",
+      "aliases": [
+        "로나 아시아"
+      ],
+      "aiDescription": "[게임] 로드나인의 동남아시아 퍼블리싱 서버 | 2025.06 출시 | 지역: 일본·태국·싱가폴·말레이시아 등",
+      "menu_tree": [
+        {
+          "category": "운영지표",
+          "menus": [
+            {
+              "name": "실시간 지표"
+            },
+            {
+              "name": "War Room"
+            }
+          ]
+        },
+        {
+          "category": "플랫폼",
+          "menus": [
+            {
+              "name": "실시간 지표"
+            },
+            {
+              "name": "사전 등록 "
+            },
+            {
+              "name": "사전 캐릭터명 선점"
+            }
+          ]
+        },
+        {
+          "category": "커뮤니티 동향",
+          "menus": [
+            {
+              "name": "커뮤니티"
+            },
+            {
+              "name": "커뮤니티 요약 목록"
+            },
+            {
+              "name": "비교 분석"
+            }
+          ]
+        }
+      ],
+      "datasets": [
+        {
+          "id": 2380,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (게시글 작성 · raw 추출) || CATEGORY, 날짜 || AUTHORS, POSTS",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "reportLang",
+            "categoryCd",
+            "startDt",
+            "perdCd",
+            "endDt",
+            "lang",
+            "communityCd",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2379,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (게시글 작성 · 추이 시각화) || 진행 일자 || ARTICLE 수, AUTHOR 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "perdCd",
+            "endDt",
+            "lang",
+            "communityCd",
+            "categoryCd",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1848,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 여론 비교 분석 - 게임·커뮤니티 간 반응 차이 진단 (게시글 작성 · 추이 시각화) || 진행 일자, 날짜 유형, 기간 LABEL || ARTICLE 수, AUTHOR 수, OFFSET",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "channelCd",
+            "baseDt",
+            "compareDt"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 852,
+          "menuPath": "운영지표 > War Room > 동접(5분) 일자별 비교",
+          "description": "5분 단위 동시 접속자(CCU)를 당일·과거 일자와 시간대별로 나란히 비교하는 실시간 War Room 모니터링 시계열.",
+          "metricCategory": "기타",
+          "key_params": [
+            "delayMin",
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 698,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 서버별 비교_아시아",
+          "description": "아시아 권역 5분 단위 세부 서버별 동시 접속자(CCU) 실시간 시계열. 단일 월드 내 채널 단위 비교용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "SERVER_CD",
+            "endDt",
+            "delayMin",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 697,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 서버별 비교_아시아",
+          "description": "아시아 권역 5분 단위 월드/서버별 동시 접속자(CCU) 실시간 시계열. 월드 명칭과 세부 서버 단위까지 비교 가능.",
+          "metricCategory": "기타",
+          "key_params": [
+            "SERVER_CD",
+            "endDt",
+            "delayMin",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 696,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 서버별 비교_아시아",
+          "description": "아시아 권역 5분 단위 서버별 동시 접속자(CCU) 실시간 시계열. 세부 서버(채널) 단위로 비교 가능.",
+          "metricCategory": "기타",
+          "key_params": [
+            "SERVER_CD",
+            "endDt",
+            "delayMin",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2384,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (토픽 리스트 · raw 추출) || CATEGORY, 날짜, NEGATIVE RATIO, TOPIC, SUMMARY JSON || AUTHORS, POSTS",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "reportLang",
+            "startDt",
+            "endDt",
+            "communityCd",
+            "channelCd",
+            "lang"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2383,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (토픽 List) || ARTICLE 목록 정보, 진행 일자, SUMMARY ID, SUMMARY JSON, 제목 || ARTICLE 수, AUTHOR 수, NEGATIVE 비율, NEUTRAL 비율, POSITIVE 비율, 전체 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "endDt",
+            "communityCd",
+            "channelCd",
+            "lang",
+            "reportLang",
+            "pageNumber",
+            "pageSize"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2315,
+          "menuPath": "플랫폼 > 사전 등록 > 사전 등록자 수 (IP 정보별)",
+          "description": "IP·지역·언어·인증 수단·등록 횟수 구간별 사전 등록자 수 순위 (최대 15위). 어뷰징 의심 IP 추적용. 전체 데이터는 엑셀 다운로드.",
+          "metricCategory": "기타",
+          "key_params": [
+            "authTypeCd",
+            "countryCd",
+            "endDt",
+            "eventCd",
+            "langCd",
+            "regCntSectionCd",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2307,
+          "menuPath": "플랫폼 > 사전 등록 > 공홈 사전 등록자 수 (페이지언어_지역별)",
+          "description": "공홈 사전 등록자 수를 페이지 언어·국가·인증 수단 조합으로 분해한 다운로드용 리포트. 전일 23:59 기준.",
+          "metricCategory": "기타",
+          "key_params": [
+            "authTypeCd",
+            "countryCd",
+            "endDt",
+            "eventCd",
+            "langCd",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2305,
+          "menuPath": "플랫폼 > 사전 등록 > 공홈 사전 등록자 수 (페이지언어_지역별)",
+          "description": "공홈 사전 등록자 수를 페이지 언어·국가·등록 구분으로 분해한 리포트. 전일 23:59 기준 집계.",
+          "metricCategory": "기타",
+          "key_params": [
+            "authTypeCd",
+            "countryCd",
+            "endDt",
+            "eventCd",
+            "langCd",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1639,
+          "menuPath": "플랫폼 > 사전 캐릭터명 선점 > 사전 캐릭터명 선점자 수 (국가별)",
+          "description": "일자·국가별 사전 캐릭터명 선점자 수 시계열. 전일 23:59:59 기준 집계, 국가/서버/월드/이벤트 다중 필터 지원.",
+          "metricCategory": "기타",
+          "key_params": [
+            "characterTypeCd",
+            "countryCd",
+            "endDt",
+            "eventCd",
+            "serverCd",
+            "startDt",
+            "worldCd",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1638,
+          "menuPath": "플랫폼 > 사전 캐릭터명 선점 > 사전 캐릭터명 선점자 수 (서버별)",
+          "description": "일자별 서버·월드·국가별 사전 캐릭터명 선점자 수 시계열. 전일 23:59:59 기준 집계, 매일 오전 9시 조회 가능.",
+          "metricCategory": "기타",
+          "key_params": [
+            "characterTypeCd",
+            "countryCd",
+            "endDt",
+            "eventCd",
+            "serverCd",
+            "startDt",
+            "worldCd",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 597,
+          "menuPath": "플랫폼 > 사전 캐릭터명 선점 > 사전 캐릭터명 선점자 수 (IP 정보별)",
+          "description": "IP 정보별 사전 캐릭터명 선점자 수 집계. 전일 23:59:59 기준 데이터로 매일 오전 9시 조회 가능하며, 리스트는 최대 15개까지 노출되고 전체는 엑셀 다운로드로 확인.",
+          "metricCategory": "기타",
+          "key_params": [
+            "characterTypeCd",
+            "countryCd",
+            "endDt",
+            "eventCd",
+            "regCntSectionCd",
+            "serverCd",
+            "startDt",
+            "worldCd",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1856,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "동일 언어권·커뮤니티 내 이슈 발생일 간 차이를 비교해 변화 맥락을 도출하는 리포트. 일·주·월 단위 게시글 수, 작성자 수, 감정 비율, 카테고리·키워드 비중 비교 제공.",
+          "metricCategory": "기타",
+          "key_params": [
+            "channelCd",
+            "communityCd",
+            "lang",
+            "perdCd",
+            "reportLang",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4409,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (키워드 랭킹 · 건수 카운트) ||  || 전체 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "endDt",
+            "lang",
+            "communityCd",
+            "channelCd",
+            "categoryCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2388,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (키워드 랭킹 - 게시글 탐색) || ARTICLE ID, CATEGORY 코드, COMMUNITY 코드, 콘텐츠, KEYWORDS, 링크, 계정 생성일, SENTIMENT, 제목 || 전체 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "endDt",
+            "lang",
+            "communityCd",
+            "channelCd",
+            "categoryCd",
+            "sentiment",
+            "pageNumber",
+            "pageSize"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2387,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (키워드 랭킹 · raw 추출) || 기준 ARTICLE 수, KEYWORD, 랭크, 랭크 변경 || ",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "baseDt",
+            "compareDt",
+            "perdCd",
+            "lang",
+            "communityCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2386,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (키워드 랭킹 - 키워드 순위) || KEYWORD || 기준 ARTICLE 수, 기준 주문, COMPARE ARTICLE 수, COMPARE 주문",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "baseDt",
+            "compareDt",
+            "perdCd",
+            "lang",
+            "communityCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2377,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (주요 지표 요약 · 요약 패널) || MOST ARTICLE CATEGORY, MOST KEYWORD || MOST ARTICLE CATEGORY 수, MOST KEYWORD ARTICLE 수, 전체 ARTICLE 수, 전체 ARTICLE 차이 수, 전체 ARTICLE 차이 율, 전체 원시 ARTICLE 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "reportLang",
+            "compareDt",
+            "baseDt",
+            "perdCd",
+            "lang",
+            "communityCd",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2382,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (감정 분포 · raw 추출) || 날짜, 부정게시글비율, 부정게시글수, 카테고리 || ",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "reportLang",
+            "startDt",
+            "endDt",
+            "perdCd",
+            "lang",
+            "communityCd",
+            "categoryCd",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2381,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (감정 분포 · 추이 시각화) || 진행 일자 || NEGATIVE 수, NEGATIVE 비율, NEUTRAL 수, NEUTRAL 비율, POSITIVE 수, POSITIVE 비율",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "perdCd",
+            "endDt",
+            "lang",
+            "communityCd",
+            "categoryCd",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1855,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 여론 비교 분석 - 게임·커뮤니티 간 반응 차이 진단 (키워드 랭킹 · raw 추출) || ARTICLE 차이 비율, 기준 ARTICLE 수, COMPARE ARTICLE 수, KEYWORD, 랭크, 랭크 변경 || ARTICLE 차이 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "channelCd",
+            "baseDt",
+            "compareDt"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1854,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 여론 비교 분석 - 게임·커뮤니티 간 반응 차이 진단 (키워드 랭킹 · 순위) || KEYWORD || ARTICLE 차이 수, ARTICLE 차이 비율, 기준 ARTICLE 수, 기준 주문, COMPARE ARTICLE 수, COMPARE 주문",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "channelCd",
+            "baseDt",
+            "compareDt"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1851,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 여론 비교 분석 - 게임·커뮤니티 간 반응 차이 진단 (감정 분포 · raw 추출) || 기준 NEGATIVE, 기준 NEUTRAL, 기준 POSITIVE, COMPARE NEGATIVE, COMPARE NEUTRAL, COMPARE POSITIVE, 기간 LABEL || ",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "channelCd",
+            "baseDt",
+            "compareDt",
+            "mode"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1850,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 여론 비교 분석 - 게임·커뮤니티 간 반응 차이 진단 (감정 분포 · 추이 시각화) || 진행 일자, 날짜 유형, 기간 LABEL || NEGATIVE ARTICLE 수, NEGATIVE ARTICLE 율, NEUTRAL ARTICLE 수, NEUTRAL ARTICLE 율, OFFSET, POSITIVE ARTICLE 수, POSITIVE ARTICLE 율",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "channelCd",
+            "baseDt",
+            "compareDt"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2385,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (토픽 List - 게시글 탐색) || ARTICLE ID, COMMUNITY 코드, 콘텐츠, KEYWORDS, 링크, 계정 생성일, SENTIMENT, 제목 || 전체 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "communityCd",
+            "channelCd",
+            "pageNumber",
+            "pageSize",
+            "articleIds"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2378,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (카테고리 트렌드) || 명, 값 || ARTICLE 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "reportLang",
+            "startDt",
+            "endDt",
+            "perdCd",
+            "lang",
+            "communityCd",
+            "channelCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2376,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (커뮤니티 요약 · raw 추출) || 진행 일자, CMNTY 코드, 언어 코드, SUMMARY JSON || NEGATIVE ARTICLE 비율, 전체 ARTICLE 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "endDt",
+            "reportLang",
+            "perdCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2375,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 동향 모니터링 - 채널별 여론·감정·이슈 신호 종합 (커뮤니티 요약 · 요약 패널) || SUMMARY ID, SUMMARY JSON || NEGATIVE ARTICLE 비율, NEUTRAL ARTICLE 비율, POSITIVE ARTICLE 비율, 전체 ARTICLE 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "baseDt",
+            "communityCd",
+            "lang",
+            "reportLang",
+            "perdCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1853,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 여론 비교 분석 - 게임·커뮤니티 간 반응 차이 진단 (raw 추출) || ARTICLE 차이 비율, 기준 ARTICLE 수, 기준 ARTICLE 비율, CATEGORY, COMPARE ARTICLE 수, COMPARE ARTICLE 비율 || ",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "channelCd",
+            "compareDt",
+            "baseDt"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1852,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 여론 비교 분석 - 게임·커뮤니티 간 반응 차이 진단 || CATEGORY || ARTICLE 차이 비율, 기준 ARTICLE 수, 기준 ARTICLE 비율, COMPARE ARTICLE 수, COMPARE ARTICLE 비율",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "channelCd",
+            "compareDt",
+            "baseDt"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1849,
+          "menuPath": "커뮤니티 동향 > 비교 분석 > 비교 분석 리포트",
+          "description": "커뮤니티 여론 비교 분석 - 게임·커뮤니티 간 반응 차이 진단 (게시글 작성 · raw 추출) || 기간 LABEL || 기준 수, COMPARE 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "perdCd",
+            "reportLang",
+            "lang",
+            "communityCd",
+            "channelCd",
+            "baseDt",
+            "compareDt",
+            "mode"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2390,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 요약 목록 > 커뮤니티 요약 목록",
+          "description": "커뮤니티 토픽 요약 - 핵심 이슈 트렌드와 여론 신호 모니터링 (커뮤니티 요약 · raw 추출) || 진행 일자, CMNTY 코드, 게임 ID, 언어 코드, SUMMARY JSON || ARTICLE 수, NEGATIVE 비율, NEUTRAL 비율, POSITIVE 비율",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "endDt",
+            "reportLang",
+            "perdCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2389,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 요약 목록 > 커뮤니티 요약 목록",
+          "description": "커뮤니티 토픽 요약 - 핵심 이슈 트렌드와 여론 신호 모니터링 (커뮤니티 요약) || 진행 일자, CMNTY 코드, 언어 코드, SUMMARY ID, SUMMARY JSON || ARTICLE 수, NEGATIVE 비율, 전체 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix",
+            "startDt",
+            "endDt",
+            "reportLang",
+            "perdCd",
+            "search",
+            "pageNumber",
+            "pageSize",
+            "langCds",
+            "communityCds"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2374,
+          "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
+          "description": "커뮤니티 데이터셋의 최소 집계 일자를 반환하는 메타 리포트. 조회 가능 기간 시작점 확인용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 983,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 서버별 비교_아시아",
+          "description": "실시간 운영 트래픽 - 5분 단위 동접·매출 이상치 즉시 감지 (인터서버 포함) || 시간, 서버 || 동접자 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "delayMin",
+            "SERVER_CD",
+            "gameId",
+            "endDt",
+            "compareDt"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 982,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 서버별 비교_아시아",
+          "description": "실시간 운영 트래픽 - 5분 단위 동접·매출 이상치 즉시 감지 (서버별 동접자 수(데이터테이블)_NEW) || 시간, 서버, 서버 || 동접자 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "delayMin",
+            "gameId",
+            "endDt",
+            "compareDt",
+            "SERVER_CD"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 981,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 서버별 비교_아시아",
+          "description": "실시간 운영 트래픽 - 5분 단위 동접·매출 이상치 즉시 감지 (인터서버 제외) || 시간, 서버 || 동접자 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "delayMin",
+            "SERVER_CD",
+            "gameId",
+            "endDt",
+            "compareDt"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 969,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 월드별 비교_아시아",
+          "description": "실시간 운영 트래픽 - 5분 단위 동접·매출 이상치 즉시 감지 || 시간, 서버 || 동접자 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "delayMin",
+            "gameId",
+            "endDt",
+            "compareDt"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 967,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 일자별 비교_아시아",
+          "description": "아시아 지역 당일 시점의 현재·평균·최대 동접자 수와 누적 매출을 한 행으로 요약한 실시간 KPI 스냅샷.",
+          "metricCategory": "기타",
+          "key_params": [
+            "compareDt",
+            "countryCd",
+            "delayMin",
+            "endDt",
+            "osCd",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 966,
+          "menuPath": "운영지표 > 실시간 지표 > 동접(5분) 일자별 비교_아시아",
+          "description": "아시아 지역 대상 5분 단위 동접·매출·결제자수를 당일과 비교일자별로 나란히 보여주는 실시간 운영 모니터링 시계열.",
+          "metricCategory": "기타",
+          "key_params": [
+            "compareDt",
+            "countryCd",
+            "delayMin",
+            "endDt",
+            "osCd",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 853,
+          "menuPath": "운영지표 > War Room > 동접(5분) 일자별 비교",
+          "description": "워룸 운영 알림 - 사업·기술 위기 상황 즉시 공유 및 대응 (누계 요약) || 진행 일자 || 평균 동접자 수, 현재 동접자 수, 최대 동접자 수",
+          "metricCategory": "기타",
+          "key_params": [
+            "delayMin",
+            "gameId",
+            "endDt",
+            "compareDt"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2313,
+          "menuPath": "플랫폼 > 실시간 지표 > 사전 등록자 수 (시간대별)",
+          "description": "공홈 사전 등록자 수를 1시간 단위로 집계한 실시간 시계열. 이벤트·인증 수단 필터 지원.",
+          "metricCategory": "기타",
+          "key_params": [
+            "authTypeCd",
+            "endDt",
+            "eventCd",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 901,
+          "menuPath": "플랫폼 > 실시간 지표 > 사전 캐릭터명 선점자 수 (월드&서버별)",
+          "description": "월드·서버별 사전 캐릭터명 선점 등록자·취소자·전체 사용자 수 실시간 스냅샷. 1시간 단위로 집계.",
+          "metricCategory": "기타",
+          "key_params": [
+            "endDt",
+            "eventCd",
+            "serverCd",
+            "worldCd",
+            "gameId"
+          ],
+          "params_unknown": false
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "에픽세븐",
+      "aliases": [
+        "에픽세븐 글로벌",
+        "에픽"
+      ],
+      "aiDescription": "[게임] 모바일 턴제 수집형 RPG | 2018.08 출시 | iOS/Android | 개발: 슈퍼크리에이티브 / 유통: 메가포트 | 애니메이션 전투 특징",
+      "menu_tree": [
+        {
+          "category": "표준 지표",
+          "menus": [
+            {
+              "name": "표준 지표"
+            },
+            {
+              "name": "게임 포인트",
+              "children": [
+                {
+                  "name": "Daily 지표"
+                },
+                {
+                  "name": "Weekly 지표"
+                },
+                {
+                  "name": "Monthly 지표"
+                }
+              ]
+            },
+            {
+              "name": "다운로드 (일간)"
+            },
+            {
+              "name": "다운로드 (주간)"
+            },
+            {
+              "name": "다운로드 (월간)"
+            },
+            {
+              "name": "에픽세븐 (CHN)"
+            },
+            {
+              "name": "지표 테스트 (BISKIT)"
+            },
+            {
+              "name": "다운로드 (Quago)"
+            },
+            {
+              "name": "모바일 메뉴",
+              "children": [
+                {
+                  "name": "대시보드"
+                },
+                {
+                  "name": "실시간",
+                  "children": [
+                    {
+                      "name": "5분 단위"
+                    },
+                    {
+                      "name": "1시간 단위"
+                    }
+                  ]
+                },
+                {
+                  "name": "매출"
+                },
+                {
+                  "name": "가입&방문"
+                },
+                {
+                  "name": "트래픽"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category": "마케팅 지표",
+          "menus": [
+            {
+              "name": "캠페인 성과"
+            },
+            {
+              "name": "ADID 기준 캠페인 성과",
+              "children": [
+                {
+                  "name": "Summary"
+                },
+                {
+                  "name": "미국"
+                },
+                {
+                  "name": "한국"
+                },
+                {
+                  "name": "일본"
+                },
+                {
+                  "name": "홍콩"
+                },
+                {
+                  "name": "대만"
+                },
+                {
+                  "name": "캐나다"
+                },
+                {
+                  "name": "프랑스"
+                },
+                {
+                  "name": "독일"
+                },
+                {
+                  "name": "싱가포르"
+                },
+                {
+                  "name": "호주"
+                },
+                {
+                  "name": "영국"
+                },
+                {
+                  "name": "필리핀"
+                },
+                {
+                  "name": "태국"
+                },
+                {
+                  "name": "글로벌"
+                },
+                {
+                  "name": "캠페인 효율 체크"
+                }
+              ]
+            },
+            {
+              "name": "CUID 기준 캠페인 성과",
+              "children": [
+                {
+                  "name": "Summary"
+                },
+                {
+                  "name": "미국"
+                },
+                {
+                  "name": "한국"
+                },
+                {
+                  "name": "일본"
+                },
+                {
+                  "name": "홍콩"
+                },
+                {
+                  "name": "대만"
+                },
+                {
+                  "name": "캐나다"
+                },
+                {
+                  "name": "프랑스"
+                },
+                {
+                  "name": "독일"
+                },
+                {
+                  "name": "싱가포르"
+                },
+                {
+                  "name": "호주"
+                },
+                {
+                  "name": "영국"
+                },
+                {
+                  "name": "필리핀"
+                },
+                {
+                  "name": "태국"
+                },
+                {
+                  "name": "글로벌"
+                },
+                {
+                  "name": "캠페인 효율 체크"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "category": "커뮤니티 동향",
+          "menus": [
+            {
+              "name": "커뮤니티"
+            },
+            {
+              "name": "커뮤니티 요약 목록"
+            },
+            {
+              "name": "비교 분석"
+            }
+          ]
+        }
+      ],
+      "datasets": [
+        {
+          "id": 2155,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 가입&방문 > 일별 기준",
+          "description": "일별 가입·방문 추이. RU=누적가입자, AU=활성, NRU=신규가입, UU=순방문. NRU_UU/NRU_MEMBER_NO는 식별자 기준이 다름.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "startDt",
+            "endDt",
+            "serverCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 453,
+          "menuPath": "표준 지표 > 다운로드 (일간) > USER_TYPE_NRU_CUM_SALES",
+          "description": "신규 유저(NRU) 가입 코호트의 누적 매출 다운로드 데이터. 계정생성일·구매일 기준 경과월·국가·마켓별 과금액을 일자 범위로 제공.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 452,
+          "menuPath": "표준 지표 > 다운로드 (일간) > USER_TYPE_NRU_CUM_SALES",
+          "description": "신규 유저(NRU)의 가입 코호트별 누적 매출 현황. 계정생성일·구매일 기준 경과월·국가·마켓별 과금액 분포를 제공.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2150,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 실시간 > 1시간 단위 > 과거일 비교_1시간단위",
+          "description": "1시간 단위 실시간 매출·유저 시계열을 과거일과 비교. 시간대별 매출·PU·NRU·AU와 누적 매출/신규유저로 일자 간 흐름을 본다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "serverCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2157,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 가입&방문 > 서버 기준",
+          "description": "서버별 가입·방문·매출·동접 종합 시계열. ARPU=SALES/AU, ARPPU=SALES/PU. 전체 서버와 개별 서버(KOR 등) 동시 제공.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "startDt",
+            "endDt",
+            "serverCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2151,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 실시간 > 1시간 단위 > 서버 기준_1시간단위",
+          "description": "1시간 단위 실시간 서버별 매출·유저 시계열. 전체와 개별 서버의 SALES·PU·NRU·AU와 누적값으로 서버별 결제·유입 흐름을 본다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "serverCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 441,
+          "menuPath": "표준 지표 > 다운로드 (일간) > MKT_USER",
+          "description": "MKT_USER 일자·IP 국가별 신규 가입자 전체 이력 다운로드. 매일 전체 일자가 갱신되며 NRU 건수와 고유 유저 수를 제공.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 440,
+          "menuPath": "표준 지표 > 다운로드 (일간) > MKT_USER",
+          "description": "MKT_USER 일자·IP 국가별 신규 가입자 집계. 매일 전체 일자가 갱신되며 NRU 건수와 고유 유저 수를 함께 제공.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 439,
+          "menuPath": "표준 지표 > 다운로드 (일간) > LOGIN",
+          "description": "특정일 LOGIN 로그 다운로드용 유저 단위 원본 데이터. 접속 IP·국가·단말·언어·가입 채널과 누적 매출을 함께 제공.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 438,
+          "menuPath": "표준 지표 > 다운로드 (일간) > LOGIN",
+          "description": "특정일 LOGIN 로그 다운로드용 유저 단위 원본 데이터. 접속 IP·국가·단말·언어·가입 채널과 누적 매출을 함께 제공.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 470,
+          "menuPath": "표준 지표 > 다운로드 (일간) > UU_USER",
+          "description": "일자별 유저(UU) 단위 다운로드 데이터. 스토브 회원·디바이스·IP·국가·언어 정보와 누적/당일 결제금액, 신규유저(NRU)·IP 변경 플래그를 함께 제공.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2156,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 가입&방문 > 이용자 기준",
+          "description": "일별 활성 유저(AU) 추이를 이용자 유형(전체·신규 등)으로 분해한 시계열.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "startDt",
+            "endDt",
+            "serverCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2154,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 매출 > 서버 기준",
+          "description": "서버별 매출·유저·동접 등 종합 시계열 지표. ARPU=SALES/AU, ARPPU=SALES/PU. MCU는 일별 최고 동접.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "startDt",
+            "endDt",
+            "serverCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2153,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 매출 > 구매자 기준",
+          "description": "기간별 매출 시계열을 구매자 유형(전체·신규 등)으로 분해. ARPU=SALES/AU, ARPPU=SALES/PU, 구매율=PU/AU.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "startDt",
+            "endDt",
+            "serverCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 503,
+          "menuPath": "표준 지표 > 에픽세븐 (CHN) > UNITS_HOLD (CHN)",
+          "description": "CHN 서버 캐릭터 보유 현황 전체 데이터. AU·UU·계정 레벨 70+ UU 기준 보유 인원을 캐릭터·서버 단위로 제공한다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 502,
+          "menuPath": "표준 지표 > 에픽세븐 (CHN) > UNITS_HOLD (CHN)",
+          "description": "CHN 서버 캐릭터별 보유 현황. 활성유저(AU)·고유유저(UU)·계정 레벨 70+ UU 세 기준으로 캐릭터 보유 인원을 측정해 픽업·메타 보유 분포를 본다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 477,
+          "menuPath": "표준 지표 > 다운로드 (일간) > WWD_UU_COUNTRY_COMPARISON",
+          "description": "전 세계 국가별 접속 유저수·매출 비교 다운로드 데이터셋.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 476,
+          "menuPath": "표준 지표 > 다운로드 (일간) > WWD_UU_COUNTRY_COMPARISON",
+          "description": "전체 일자에 대해 매일 갱신되는 국가별 접속 유저수·매출 비교 다운로드 시계열. 전 세계 국가별 트래픽·매출 분포 파악용.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 451,
+          "menuPath": "표준 지표 > 다운로드 (일간) > UNITS_HOLD",
+          "description": "서버·캐릭터별 보유 현황을 일자 범위로 제공. AU/UU/계정 70레벨 이상 UU 기준 보유 인원을 모두 포함.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 450,
+          "menuPath": "표준 지표 > 다운로드 (일간) > UNITS_HOLD",
+          "description": "서버·캐릭터별 보유 현황 스냅샷. AU/UU/계정 70레벨 이상 UU 기준 보유 인원을 일자별로 제공.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 443,
+          "menuPath": "표준 지표 > 다운로드 (일간) > GEN",
+          "description": "기간 내 GEN(가입) 로그 전체 다운로드용 원본. 가입 계정·단말·국가·제재·언어와 v0/v3/IP 중복수까지 어뷰징 분석에 활용.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 442,
+          "menuPath": "표준 지표 > 다운로드 (일간) > GEN",
+          "description": "기간 내 GEN(가입) 로그 다운로드용 원본. 가입 계정·단말·OS·국가·제재 여부와 v0/v3/IP 중복수로 어뷰징 탐지에 활용.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 433,
+          "menuPath": "표준 지표 > 다운로드 (일간) > ARTIFACT_HOLD",
+          "description": "일자·서버·아티팩트별 보유 유저수(AU/UU)와 평균 돌파횟수·강화단계·보유개수의 일간 다운로드본. 계정레벨 70 코어 유저를 별도 트랙으로 비교한다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 432,
+          "menuPath": "표준 지표 > 다운로드 (일간) > ARTIFACT_HOLD",
+          "description": "일자·서버·아티팩트별 보유 유저(AU/UU)와 평균 돌파횟수·강화단계·보유개수 스냅샷(샘플본). 계정레벨 70 코어 유저 분리 집계로 아티팩트 진척도를 비교한다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 50,
+          "menuPath": "표준 지표 > 지표 테스트 (BISKIT) > 실시간(5분 단위) 동시접속 유저수",
+          "description": "기준일과 전일의 동시접속 유저수(CCU)를 5분 단위로 비교하는 실시간 시계열. 당일 트래픽 흐름을 전일과 같은 시각대에서 대조한다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "p_BUILD_CD",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 471,
+          "menuPath": "표준 지표 > 다운로드 (일간) > UU_USER",
+          "description": "일자별 유저(UU) 단위 다운로드 로그. 스토브 회원·디바이스·IP·국가·언어 정보와 누적/당일 결제, 신규유저·IP 변경 플래그를 포함.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2144,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 대시보드 > 대시보드",
+          "description": "특정일 유저 지표 스냅샷. 등록·활성·신규·고유 유저 구성과 신규 회원 유입 규모를 한눈에 본다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "serverCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4592,
+          "menuPath": "표준 지표 > 게임 포인트 > Monthly 지표 > 게임 포인트 변동",
+          "description": "월말 기준 게임 포인트 변동 내역을 적립·적립취소 등 변동 구분별·통화별로 집계. 변동 유저수·총액·통화별 금액·인당 평균(변동액÷유저수)을 제공.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "currCd",
+            "endDt",
+            "startDt",
+            "gameId",
+            "tablePrefix",
+            "perdCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4591,
+          "menuPath": "표준 지표 > 게임 포인트 > Monthly 지표 > 게임 포인트 적립 예정",
+          "description": "월말 기준 게임 포인트 적립 예정 현황 스냅샷. 적립 예정 유저수·총 적립액·통화별 적립액·인당 평균을 제공하며, 인당 평균은 적립 예정 금액 ÷ 적립 유저수.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "currCd",
+            "endDt",
+            "startDt",
+            "perdCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4590,
+          "menuPath": "표준 지표 > 게임 포인트 > Monthly 지표 > 게임 포인트 보유",
+          "description": "월말 스냅샷 기준 게임 포인트 보유 현황. 보유 유저수·금액 합계·인당 평균·최대 보유액을 통화별로 집계하며, 보유 금액(KRW) ÷ 보유 유저수로 인당 평균을 산출.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "currCd",
+            "endDt",
+            "startDt",
+            "gameId",
+            "tablePrefix",
+            "perdCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4589,
+          "menuPath": "표준 지표 > 게임 포인트 > Weekly 지표 > 게임 포인트 변동",
+          "description": "주간 게임 포인트 변동 — 변동 구분(적립/사용 등)별로 주차 마지막일 기준 유저수·금액·인당 평균 집계. 보유 변화 원인을 주 단위로 파악.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "currCd",
+            "endDt",
+            "startDt",
+            "gameId",
+            "tablePrefix",
+            "perdCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4588,
+          "menuPath": "표준 지표 > 게임 포인트 > Weekly 지표 > 게임 포인트 적립 예정",
+          "description": "주간 게임 포인트 적립 예정 — 주차 마지막일 기준 적립 예정 유저수·금액·인당 평균. 보유로 전환될 누적 마일리지를 주 단위로 확인.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "currCd",
+            "endDt",
+            "startDt",
+            "gameId",
+            "tablePrefix",
+            "perdCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4587,
+          "menuPath": "표준 지표 > 게임 포인트 > Weekly 지표 > 게임 포인트 보유",
+          "description": "주간 게임 포인트 보유 스냅샷 — 주차 마지막일(일요일) 기준 보유 유저수·금액·인당 평균/최대. 미경과 주차는 집계 제외.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "currCd",
+            "endDt",
+            "startDt",
+            "gameId",
+            "tablePrefix",
+            "perdCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4577,
+          "menuPath": "표준 지표 > 게임 포인트 > Daily 지표 > 게임 포인트 변동",
+          "description": "일별 게임 포인트 적립·사용 등 변동 시계열 — 변동 구분(액션) 단위로 유저수·금액·인당 평균을 제공. 적립과 사용 흐름을 추적해 보유 변화 원인을 파악.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "currCd",
+            "endDt",
+            "startDt",
+            "gameId",
+            "tablePrefix",
+            "perdCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4576,
+          "menuPath": "표준 지표 > 게임 포인트 > Daily 지표 > 게임 포인트 적립 예정",
+          "description": "일별 게임 포인트 적립 예정 시계열 — 적립 예정 유저수·금액·인당 평균. 실제 보유로 전환되기 전 누적될 마일리지 흐름을 일자 단위로 확인.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "currCd",
+            "endDt",
+            "startDt",
+            "gameId",
+            "tablePrefix",
+            "perdCd"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4575,
+          "menuPath": "표준 지표 > 게임 포인트 > Daily 지표 > 게임 포인트 보유",
+          "description": "일별 게임 포인트 보유 현황 시계열 — 보유 유저수·보유 금액(KRW)·인당 평균/최대 보유 금액. 자정 스냅샷이라 변동 금액과 차이 가능.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "currCd",
+            "endDt",
+            "startDt",
+            "perdCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1124,
+          "menuPath": "표준 지표 > 다운로드 (Quago) > Quago_작업장의심_클라이언트_(정보추가)",
+          "description": "Quago 작업장 의심 클라이언트 다운로드 데이터. 디바이스/에뮬레이터/루팅/네트워크 부정 판정과 계정 레벨·누적 과금 결합 제공.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 1123,
+          "menuPath": "표준 지표 > 다운로드 (Quago) > Quago_작업장의심_클라이언트_(정보추가)",
+          "description": "Quago 어뷰징 탐지 결과 기반 작업장 의심 유저 클라이언트 단위 상세 데이터. 디바이스 공유·에뮬레이터·루팅·네트워크 판정과 계정 레벨/누적 과금 정보 결합.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
         {
           "id": 2397,
           "menuPath": "커뮤니티 동향 > 커뮤니티 > 커뮤니티",
@@ -114,6 +2413,19 @@
             "reportLang",
             "pageNumber",
             "pageSize"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 183,
+          "menuPath": "마케팅 지표 > 캠페인 성과 > 2주 PU",
+          "description": "신규·복귀 유저의 가입/복귀 이후 14일간(D0·D3·D3~D6·D7~D13) 결제 유저수(PU) 추이를 국가별로 보여주는 캠페인 성과 시계열.",
+          "metricCategory": "기타",
+          "key_params": [
+            "country_cd",
+            "endDt",
+            "startDt",
+            "gameId"
           ],
           "params_unknown": false
         },
@@ -495,6 +2807,1422 @@
             "articleIds"
           ],
           "params_unknown": false
+        },
+        {
+          "id": 4197,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 한국 > 한국",
+          "description": "한국 시장 CUID 기준 일자·OS·캠페인 유형별 광고 성과. D+1~D+360 ROAS·리텐션으로 국내 모객 효율과 잔존 패턴을 분석한다.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4193,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 미국 > 미국",
+          "description": "미국 시장 CUID 기준 일자·OS·캠페인 유형별 광고 성과. D+1~D+360 ROAS와 리텐션으로 모객 효율과 잔존 패턴을 분석한다.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4251,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 캠페인 효율 체크 > 캠페인 효율 체크",
+          "description": "일자별 캠페인 효율 변화 — 모객수·CPA·D+n 잔존율·D+n ROAS를 진행일 기준으로 추적. D+n은 시작일부터 n일 경과 시 합산되는 기간 누적 지표.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4250,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 캠페인 효율 체크 > 캠페인 효율 체크",
+          "description": "캠페인별 효율 비교 — 모객수·CPA·D+n 잔존율·D+n ROAS로 캠페인 단위 마케팅 성과 평가. D+n ROAS=Revenue(Dn)/Cost(Dn).",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4249,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 캠페인 효율 체크 > 캠페인 효율 체크",
+          "description": "AOS/iOS OS별 캠페인 효율을 모객 비용·잔존율·ROAS(D+1~D+360)로 비교. ADID(디바이스 식별자) 또는 CUID(인게임 GUID) 기준 선택 가능.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4248,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 캠페인 효율 체크 > 캠페인 효율 체크",
+          "description": "국가별 캠페인 효율을 모객 비용·잔존율·ROAS(D+1~D+360)로 비교. D+n ROAS=Revenue(Dn)/Cost(Dn), 모객단가=Cost/모객수. COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4247,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 캠페인 효율 체크 > 캠페인 효율 체크",
+          "description": "월별 캠페인 효율 체크. 광고비·모객수·CPA와 D+1~D+360 리텐션·ROAS로 월 단위 캠페인 성과 추이를 점검.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4246,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 글로벌 > 글로벌",
+          "description": "글로벌 일자·OS·매체별 캠페인 성과. 광고비·모객수·CPA와 D+1~D+360 리텐션·ROAS로 매체 효율을 비교.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4245,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 글로벌 > 글로벌",
+          "description": "글로벌 일자·OS·캠페인 유형별 캠페인 성과. 광고비·모객수·CPA와 D+1~D+360 리텐션·ROAS로 효율을 추적.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4244,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 글로벌 > 글로벌",
+          "description": "글로벌 매체·캠페인 유형별 캠페인 효율. 광고비·모객수·CPA와 D+1~D+360 리텐션·ROAS로 매체별 성과를 비교.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4243,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 글로벌 > 글로벌",
+          "description": "글로벌 ADID 기준 캠페인 일자·OS별 성과. 광고비·모객수·CPA와 D+1~D+360 리텐션·ROAS를 기간 합산 방식으로 집계.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4242,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 태국 > 태국",
+          "description": "태국 일자·OS·매체별 캠페인 성과. 광고비·모객수·CPA와 D+1~D+360 리텐션·ROAS로 매체 효율을 비교.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4241,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 태국 > 태국",
+          "description": "태국 일자·OS·캠페인 유형별 캠페인 성과. 광고비·모객수·CPA와 D+1~D+360 리텐션·ROAS로 효율을 추적.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4240,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 태국 > 태국",
+          "description": "태국 매체·캠페인 유형별 캠페인 효율. 광고비·모객수·CPA와 D+1~D+360 리텐션·ROAS로 매체 성과를 비교.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4239,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 태국 > 태국",
+          "description": "태국 ADID 기준 캠페인 일자·OS별 성과. 광고비·모객수·CPA와 D+1~D+360 리텐션·ROAS를 집계하며 캠페인명 앞 2자리 국가코드로 집행 국가 판정.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4238,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 필리핀 > 필리핀",
+          "description": "필리핀 CUID 기준 캠페인 일자별 성과. 매체·OS별 광고비·모객수·CPA와 D+1~D+360 리텐션·ROAS를 집계하며 COST=0 캠페인은 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4237,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 필리핀 > 필리핀",
+          "description": "필리핀 시장 일자·OS·캠페인 유형별 모객 성과 추이. CUID 기준 모객을 집계하며 D+n ROAS=Revenue(Dn)/Cost(Dn), 리텐션은 Revisit(Dn)/모객수. COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4235,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 필리핀 > 필리핀",
+          "description": "필리핀 시장 일자·OS별 캠페인 모객 성과 추이. CUID 기준 모객을 집계하며 모객단가·D+n ROAS·리텐션으로 효율을 추적. COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4234,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 영국 > 영국",
+          "description": "영국 시장 일자·OS·매체별 캠페인 모객 성과 추이. 모객단가·D+n ROAS·리텐션을 함께 추적하며 COST=0 캠페인은 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4232,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 영국 > 영국",
+          "description": "영국 시장 매체·캠페인 유형별 성과. 모객단가=Cost/모객수, D+n ROAS=Revenue(Dn)/Cost(Dn), D+n 리텐션=Revisit(Dn)/모객수. COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4230,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 호주 > 호주",
+          "description": "호주 시장 일자·OS·매체별 캠페인 모객 성과 추이. 모객단가·D+n ROAS·리텐션을 함께 추적하며 COST=0 캠페인은 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4228,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 호주 > 호주",
+          "description": "호주 시장 매체별 캠페인 성과. 모객단가=Cost/모객수, D+n ROAS=Revenue(Dn)/Cost(Dn), D+n 리텐션=Revisit(Dn)/모객수로 산출. COST=0 캠페인은 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4227,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 호주 > 호주",
+          "description": "호주 CUID 기준 캠페인 OS별 D+n 잔존율·ROAS. CPA=Cost/모객수, ROAS=Revenue(Dn)/Cost(Dn). COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4226,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 싱가포르 > 싱가포르",
+          "description": "싱가포르 CUID 기준 OS×매체별 일자별 잔존율·ROAS 집계. CPA=Cost/모객수, COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4225,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 싱가포르 > 싱가포르",
+          "description": "싱가포르 CUID 기준 OS×캠페인 유형별 잔존율·ROAS 집계. CPA=Cost/모객수, 잔존율은 %p 단위.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4224,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 싱가포르 > 싱가포르",
+          "description": "싱가포르 CUID 기준 매체×캠페인 유형별 잔존율·ROAS 집계. CPA=Cost/모객수, COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4223,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 싱가포르 > 싱가포르",
+          "description": "싱가포르 CUID 기준 캠페인 OS별 D+n 잔존율·ROAS. CPA=Cost/모객수, ROAS=Revenue(Dn)/Cost(Dn). COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4222,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 독일 > 독일",
+          "description": "독일 CUID 기준 OS×매체별 일자별 잔존율·ROAS 집계. CPA=Cost/모객수, COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4221,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 독일 > 독일",
+          "description": "독일 CUID 기준 OS×캠페인 유형별 잔존율·ROAS 집계. CPA=Cost/모객수, 잔존율은 %p 단위.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4220,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 독일 > 독일",
+          "description": "독일 CUID 기준 매체×캠페인 유형별 D+n 잔존율·ROAS 집계. CPA=Cost/모객수, COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4219,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 독일 > 독일",
+          "description": "독일 CUID 기준 캠페인 OS별 D+n 잔존율·ROAS. CPA=Cost/모객수, ROAS=Revenue(Dn)/Cost(Dn). COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4218,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 프랑스 > 프랑스",
+          "description": "프랑스 CUID 기준 캠페인 매체별 D+n 잔존율·ROAS. CPA=Cost/모객수, ROAS=Revenue(Dn)/Cost(Dn). COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4207,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 대만 > 대만",
+          "description": "대만 CUID 기준 캠페인 성과 — OS·일자별 Cost·모객수·CPA와 D+1~D+360 ROAS/리텐션. Cost=0 캠페인 제외, 캠페인명 앞 2자리 국가코드 판정.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4206,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 홍콩 > 홍콩",
+          "description": "홍콩 CUID 기준 캠페인 성과 — OS·매체·일자별 Cost·모객수·CPA와 D+1~D+360 ROAS/리텐션 추이.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4205,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 홍콩 > 홍콩",
+          "description": "홍콩 CUID 기준 캠페인 성과 — OS·캠페인 유형·일자별 Cost·모객수·CPA와 D+1~D+360 ROAS/리텐션 추이.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4204,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 홍콩 > 홍콩",
+          "description": "홍콩 CUID 기준 캠페인 성과 — 매체·캠페인 유형별 Cost·모객수·CPA와 D+1~D+360 ROAS/리텐션 집계.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4203,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 홍콩 > 홍콩",
+          "description": "홍콩 CUID 기준 캠페인 성과 — OS·일자별 Cost·모객수·CPA와 D+1~D+360 ROAS/리텐션. Cost=0 캠페인 제외, 캠페인명 앞 2자리 국가코드 판정.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4202,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 일본 > 일본",
+          "description": "일본 CUID 기준 캠페인 성과 — OS·매체·일자별 Cost·모객수·CPA와 D+1~D+360 ROAS/리텐션 추이.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4201,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 일본 > 일본",
+          "description": "일본 CUID 기준 캠페인 성과 — OS·캠페인 유형·일자별 Cost·모객수·CPA와 D+1~D+360 ROAS/리텐션 추이.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4200,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 일본 > 일본",
+          "description": "일본 CUID 기준 캠페인 성과 — 매체·캠페인 유형별 Cost·모객수·CPA 및 D+1~D+360 ROAS/리텐션 집계.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4199,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 일본 > 일본",
+          "description": "일본 CUID 기준 캠페인 성과 — OS·일자별 Cost·모객수·CPA 및 D+1~D+360 ROAS/리텐션. Cost=0 캠페인 제외, 캠페인명 앞 2자리 국가코드로 판정.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4198,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 한국 > 한국",
+          "description": "한국 CUID 기준 캠페인 성과 — 매체별 Cost·모객수·CPA 및 D+1~D+360 ROAS/리텐션. Cost=0 캠페인은 제외, 국가는 캠페인명 앞 2자리 코드로 판정.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4196,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 한국 > 한국",
+          "description": "한국 시장 CUID 기준 매체·캠페인 유형별 광고 성과. D+n ROAS·리텐션으로 국내 매체별 모객 효율을 비교한다.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4195,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 한국 > 한국",
+          "description": "한국 시장 CUID 기준 캠페인 일자·OS별 광고 성과. 누적 D+n ROAS·리텐션으로 국내 모객 효율을 추적한다.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4194,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 미국 > 미국",
+          "description": "미국 시장 CUID 기준 일자·OS·매체별 캠페인 성과. 매체별 ROAS·리텐션 추이로 일자별 광고 효율 변동을 추적한다.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4191,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 미국 > 미국",
+          "description": "미국 시장 CUID 기준 캠페인 일자별 성과. OS와 일자별로 모객·D+n ROAS·리텐션을 집계해 미국향 광고 효율을 추적한다.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4190,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > Summary > Summary",
+          "description": "CUID 기준 캠페인 성과를 국가·유형별로 요약. 누적 D+n ROAS·리텐션으로 지역과 캠페인 유형별 모객 효율을 비교한다.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId",
+            "campaignGameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4189,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > Summary > Summary",
+          "description": "CUID(인게임 유저 식별자) 기준 캠페인 성과를 일자·유형별로 요약. 누적 D+n ROAS와 리텐션으로 광고비 회수 흐름을 한눈에 확인한다.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId",
+            "campaignGameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4188,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 캠페인 효율 체크 > 캠페인 효율 체크",
+          "description": "ADID(광고 식별자) 기준 캠페인 효율을 일자별로 점검하는 리포트. D+1~D+360 누적 ROAS와 리텐션, 모객단가를 함께 집계해 광고비 회수 추이를 추적한다.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4177,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 태국 > 태국",
+          "description": "태국 ADID 기준 매체·캠페인 유형별 성과. 광고비·모객수·CPA와 D+1~D+360 잔존율·ROAS를 기간 합산(Dn) 방식으로 집계.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 481,
+          "menuPath": "표준 지표 > 다운로드 (월간) > STOVE_DEL_CHAR",
+          "description": "매월 1일 전전월 데이터가 집계되는 스토브 캐릭터 삭제(DEL_CHAR) 원시 로그 월간 다운로드. v0~v19 슬롯에 API 호출 파라미터가 담긴다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 480,
+          "menuPath": "표준 지표 > 다운로드 (월간) > STOVE_DEL_CHAR",
+          "description": "매월 1일 전전월 데이터가 집계되는 스토브 캐릭터 삭제(DEL_CHAR) 원시 로그 월간 다운로드. v0~v19 슬롯에 API 호출 파라미터가 담긴다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 479,
+          "menuPath": "표준 지표 > 다운로드 (월간) > STOVE_COMIT_UNREG",
+          "description": "매월 1일 전전월 데이터가 집계되는 스토브 회원 탈퇴(COMIT_UNREG) 원시 로그 월간 다운로드. v0~v19 슬롯에 API 호출 파라미터가 담긴다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 478,
+          "menuPath": "표준 지표 > 다운로드 (월간) > STOVE_COMIT_UNREG",
+          "description": "매월 1일 전전월 데이터가 집계되는 스토브 회원 탈퇴(COMIT_UNREG) 원시 로그 월간 다운로드. v0~v19 슬롯에 API 호출 파라미터가 담긴다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2148,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 실시간 > 5분 단위 > 서버별_5분단위",
+          "description": "선택 서버의 5분 단위 실시간 매출·동접을 과거일과 비교하는 시계열. CU·SALES·CUM_SALES로 서버 단위 트래픽 흐름을 본다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "serverCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2146,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 실시간 > 5분 단위 > 과거일 기준_5분단위",
+          "description": "5분 단위 실시간 매출·동접 시계열을 과거일과 비교. CU(동접)·SALES·CUM_SALES로 시간대별 흐름과 일자 간 차이를 확인한다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "serverCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2149,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 실시간 > 5분 단위 > 서버별_5분단위",
+          "description": "5분 단위 실시간 서버별 매출·동접 시계열. 전체와 개별 서버(KOR 등)를 함께 보여 서버별 트래픽 점유 추이를 확인한다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "serverCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2147,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 실시간 > 5분 단위 > 과거일 기준_5분단위",
+          "description": "5분 단위 실시간 서버별 매출·동접 시계열. 서버 코드(000=전체 포함)별로 CU·SALES·CUM_SALES를 비교해 서버별 트래픽 분포를 본다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "serverCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2145,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 대시보드 > 대시보드",
+          "description": "특정일 동접 스냅샷. 최대동접(MCU)·평균동접(ACU)으로 트래픽 피크와 평상 트래픽을 비교한다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "serverCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2159,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 트래픽 > 서버 기준",
+          "description": "서버별 트래픽 시계열. MCU=최고 동접, ACU=평균 동접. 전체와 개별 서버(KOR 등) 동시 제공.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "startDt",
+            "endDt",
+            "serverCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 2158,
+          "menuPath": "표준 지표 > 모바일 메뉴 > 트래픽 > 일별 기준",
+          "description": "일별 트래픽 시계열. MCU=일중 최고 동접, ACU=일중 평균 동접.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "startDt",
+            "endDt",
+            "serverCd",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4615,
+          "menuPath": "표준 지표 > 표준 지표 > 표준 지표",
+          "description": "기간 합계 매출 스냅샷. 총 매출(VAT 포함)·VAT 제외 매출·환불액·환불 차감 순매출을 단일 행으로 요약 제공.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "startDt",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 434,
+          "menuPath": "표준 지표 > 다운로드 (일간) > CHEAT_1",
+          "description": "일자별 치트 탐지 사유(v3_id)별 로그 건수 집계(샘플). total과 equip_missmatch 등 항목별 발생량을 일간으로 비교한다.",
+          "metricCategory": "표준지표",
+          "key_params": [
+            "endDt",
+            "startDt",
+            "gameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4192,
+          "menuPath": "마케팅 지표 > CUID 기준 캠페인 성과 > 미국 > 미국",
+          "description": "미국 시장 CUID 기준 캠페인을 매체·유형별로 집계. D+n ROAS와 모객단가로 매체 간 광고 효율을 비교한다.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4187,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 캠페인 효율 체크 > 캠페인 효율 체크",
+          "description": "ADID 기준 개별 캠페인 단위 효율 체크. Cost/모객수/CPA·D+n Retention·ROAS로 캠페인명별 광고 성과 상세 비교.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4186,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 캠페인 효율 체크 > 캠페인 효율 체크",
+          "description": "ADID 기준 캠페인의 OS별 효율 체크. Cost/모객수/CPA·D+n Retention·ROAS로 AOS/iOS 플랫폼별 광고 성과 비교.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4185,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 캠페인 효율 체크 > 캠페인 효율 체크",
+          "description": "ADID 기준 캠페인의 국가별 효율 체크. Cost/모객수/CPA·D+n Retention·ROAS를 캠페인명 앞 2자리 국가코드 기준으로 합산해 국가별 성과 비교.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4183,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 글로벌 > 글로벌",
+          "description": "ADID 기준 글로벌 캠페인의 OS·매체별 일자 단위 광고 성과. Cost/모객수/CPA·D+n Retention·ROAS로 매체 채널별 효율 비교에 사용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId",
+            "campaignGameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4181,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 글로벌 > 글로벌",
+          "description": "ADID 기준 글로벌 캠페인을 매체·캠페인 유형 단위로 합산한 광고 성과. Cost/모객수/CPA·D+n Retention·ROAS로 매체별 효율 비교에 사용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId",
+            "campaignGameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4179,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 태국 > 태국",
+          "description": "ADID 기준 태국 캠페인의 OS·매체별 일자 단위 광고 성과. Cost/모객수/CPA·D+n Retention·ROAS를 매체(Source) 단위로 분해해 채널별 효율 비교에 사용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId",
+            "campaignGameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4167,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 호주 > 호주",
+          "description": "호주 ADID 기준 매체별 일자별 캠페인 모객·리텐션·ROAS 성과. 매체별 트래픽 소스 비교 가능, D+n ROAS=Revenue(Dn)/Cost(Dn). COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4165,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 호주 > 호주",
+          "description": "호주 ADID 기준 매체·캠페인 유형별 모객·리텐션·ROAS 성과. 매체 단위 트래픽 비교, D+n ROAS=Revenue(Dn)/Cost(Dn). COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4163,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 싱가포르 > 싱가포르",
+          "description": "싱가포르 ADID 기준 매체별 일자별 캠페인 모객·리텐션·ROAS 성과. 매체별 트래픽 소스 비교 가능, D+n ROAS=Revenue(Dn)/Cost(Dn). COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId",
+            "campaignGameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4161,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 싱가포르 > 싱가포르",
+          "description": "싱가포르 ADID 기준 매체·캠페인 유형별 모객·리텐션·ROAS 성과. 매체 단위 트래픽 비교, D+n ROAS=Revenue(Dn)/Cost(Dn). COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId",
+            "campaignGameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4159,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 독일 > 독일",
+          "description": "독일 ADID 기준 매체별 일자별 캠페인 모객·리텐션·ROAS 성과. 매체별 트래픽 소스 비교 가능, D+n ROAS=Revenue(Dn)/Cost(Dn). COST=0 캠페인 제외.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId",
+            "campaignGameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4137,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 일본 > 일본",
+          "description": "일본 ADID 기준 매체·캠페인 유형별 모객 성과. 광고비·모객수·CPA와 D+n 리텐션·ROAS 합산. 매체별 효율 비교용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId",
+            "campaignGameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4133,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 한국 > 한국",
+          "description": "한국 ADID 기준 매체·캠페인 유형별 모객 성과. 광고비·모객수·CPA와 D+n 리텐션·ROAS 합산. 매체별 효율 비교용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "campaignGameId",
+            "gameId",
+            "tablePrefix"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4129,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > 미국 > 미국",
+          "description": "미국 ADID 기준 매체·캠페인 유형별 모객 성과. 광고비·모객수·CPA와 D+1~D+360 리텐션·ROAS 합산. 매체별 효율 비교용.",
+          "metricCategory": "기타",
+          "key_params": [
+            "campaignNm",
+            "countryCd",
+            "endDt",
+            "idType",
+            "osCd",
+            "startDt",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId",
+            "campaignGameId"
+          ],
+          "params_unknown": false
+        },
+        {
+          "id": 4127,
+          "menuPath": "마케팅 지표 > ADID 기준 캠페인 성과 > Summary > Summary",
+          "description": "ADID 기준 마케팅 캠페인 국가·유형별 성과 요약. D+n Retention=Revisit(Dn)/모객수, D+n ROAS=Revenue(Dn)/Cost(Dn). 국가는 캠페인명 앞 2자리 영문 코드 기준.",
+          "metricCategory": "기타",
+          "key_params": [
+            "startDt",
+            "endDt",
+            "campaignGameId",
+            "campaignNm",
+            "countryCd",
+            "idType",
+            "osCd",
+            "userTypeCd",
+            "tablePrefix",
+            "gameId"
+          ],
+          "params_unknown": false
         }
       ]
     },
@@ -645,14 +4373,14 @@
         {
           "id": 1440,
           "menuPath": "표준 지표 > 유저 > 리텐션 > 접속 리텐션 (주간)",
-          "description": "주간 접속 리텐션 시계열 (W0~W24). 0주차 유저 대비 N주차 재접속 유저 수와 비율을 NRU/AU 기준으로 집계, 주차는 월~일.",
+          "description": "주 단위(월~일) 접속 리텐션. 0주차 유저(NRU 또는 AU) 중 W1~W24 각 주차에 재접속한 유저 수와 비율을 측정하는 코호트 리텐션 지표.",
           "metricCategory": "표준지표",
           "key_params": [
-            "startDt",
-            "endDt",
             "countryCd",
+            "endDt",
             "osCd",
             "serverCd",
+            "startDt",
             "userTypeCd",
             "gameId",
             "tablePrefix"
@@ -739,14 +4467,14 @@
         {
           "id": 1439,
           "menuPath": "표준 지표 > 유저 > 리텐션 > 접속 리텐션 (일간)",
-          "description": "일간 접속 리텐션 시계열 (D0~D28). 0일차 유저 대비 N일차 재접속한 유저 수와 비율을 NRU 기준으로 집계.",
+          "description": "일 단위 접속 리텐션 시계열. NRU(신규 유저) 기준 0일차 유저 중 D1~D28 각 차수에 재접속한 유저 수와 비율을 측정한다. 국가·OS는 유저별 마지막 접속일의 최종 정보 기준.",
           "metricCategory": "표준지표",
           "key_params": [
-            "startDt",
-            "endDt",
             "countryCd",
+            "endDt",
             "osCd",
             "serverCd",
+            "startDt",
             "userTypeCd",
             "gameId",
             "tablePrefix"

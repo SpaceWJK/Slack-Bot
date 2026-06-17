@@ -1164,15 +1164,17 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
                 pass  # 포트 맵 실패해도 나머지 계속
 
             # ── Step 2: Python + Node 프로세스 일괄 조회 ──
+            # KernelModeTime+UserModeTime (100ns 단위) 사용 — Get-Process 중첩 호출 제거
+            # 중첩 호출 시 프로세스 수 × WMI 지연 누적 → 844개 시 11.8초 timeout 재현
             ps_cmd = (
                 "Get-CimInstance Win32_Process "
                 "-Filter \"name='python.exe' or name='pythonw.exe' or name='node.exe'\" "
                 "| ForEach-Object { "
-                "  $cpu = try { (Get-Process -Id $_.ProcessId -ErrorAction Stop).CPU } catch { 0 }; "
+                "  $cpuSec = [math]::Round(($_.KernelModeTime + $_.UserModeTime) / 10000000, 1); "
                 "  [pscustomobject]@{ "
                 "    ProcessId=$_.ProcessId; Name=$_.Name; "
                 "    MemMB=[math]::Round($_.WorkingSetSize/1MB,1); "
-                "    CPU=[math]::Round($cpu,1); "
+                "    CPU=$cpuSec; "
                 "    CommandLine=$_.CommandLine; "
                 "    Created=$_.CreationDate.ToString('yyyy-MM-dd HH:mm:ss') "
                 "  } "
@@ -1180,7 +1182,7 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             )
             out = subprocess.check_output(
                 ['powershell', '-NoProfile', '-Command', ps_cmd],
-                text=True, timeout=15, creationflags=_NO_WINDOW,
+                text=True, timeout=10, creationflags=_NO_WINDOW,
             ).strip()
             if not out:
                 return self._empty_processes()
